@@ -41,7 +41,7 @@ jobs:
           --health-retries 5
 
     env:
-      DATABASE_URL: postgresql://fitpro:fitpro@localhost:5432/fitpro
+      DATABASE_URL: postgresql+psycopg://fitpro:fitpro@localhost:5432/fitpro
       REDIS_URL: redis://localhost:6379/0
       SECRET_KEY: test-secret-key
       DAILY_JOB_API_KEY: test-api-key
