@@ -1,11 +1,11 @@
 from sqlmodel import create_engine, Session
-from app.core.config import settings
+from app.core.config import Settings
 
 from sqlalchemy import text
 
 engine = create_engine(
-    settings.database_url,
-    echo=settings.debug,
+    Settings.database_url,
+    echo=Settings.debug,
     pool_pre_ping=True, #SQLAlchemy checks that a pooled connection is alive before handing it to your code.
 )
 
