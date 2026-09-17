@@ -4,11 +4,11 @@ from app.core.config import settings
 
 engine = create_engine(
     settings.database_url,
-    echo=False,
+    echo=settings.debug,
     pool_pre_ping=True,
 )
 
 
-def get_db():
+def get_database():
     with Session(engine) as session:
         yield session
