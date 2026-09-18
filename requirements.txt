@@ -6,7 +6,7 @@ alembic
 pydantic-settings
 redis
 python-jose[cryptography]
-passlib[bcrypt]
+pwdlib[argon2]
 python-multipart
 httpx
 pytest
