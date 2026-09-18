@@ -24,6 +24,9 @@ class User(SQLModel, table=True):
 
     role: UserRole = Field(default=UserRole.MEMBER, nullable=False)
 
-    created_at: datetime = Field(efault_factory=utc_now, sa_column=Column(DateTime(timezone=True), nullable=False))
+    created_at: datetime = Field(
+        default_factory=utc_now,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
 
     updated_at: datetime = Field(default_factory=utc_now, sa_column=Column(DateTime(timezone=True), nullable=False))
