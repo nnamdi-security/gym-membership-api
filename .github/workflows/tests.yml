@@ -60,9 +60,11 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Run database migrations
+        run: alembic upgrade head
+
       - name: Run tests
         run: pytest
       
-      - name: Run database migrations
-        run: alembic upgrade head
+
         
