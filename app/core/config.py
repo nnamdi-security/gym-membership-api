@@ -30,4 +30,4 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     return Settings()
 
-Settings = get_settings()
+Settings = get_settings() 
