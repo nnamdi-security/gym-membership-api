@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from jose import jwt
 from pwdlib import PasswordHash
 
-from app.core.config import settings
+from app.core.config import Settings
 
 
 password_hash = PasswordHash.recommended()
@@ -20,7 +20,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def create_access_token(subject: str, expires_delta: timedelta | None = None) -> str:
-    expire = datetime.now(timezone.utc) + (expires_delta if expires_delta is not None else timedelta(minutes=settings.access_token_expire_minutes))
+    expire = datetime.now(timezone.utc) + (expires_delta if expires_delta is not None else timedelta(minutes=Settings.access_token_expire_minutes))
 
     payload = {
         "sub": subject,
@@ -29,10 +29,10 @@ def create_access_token(subject: str, expires_delta: timedelta | None = None) ->
 
     return jwt.encode(
         payload,
-        settings.secret_key,
+        Settings.secret_key,
         algorithm=ALGORITHM,
     )
 
 
 def decode_access_token(token: str) -> dict:
-    return jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM]) 
+    return jwt.decode(token, Settings.secret_key, algorithms=[ALGORITHM])
