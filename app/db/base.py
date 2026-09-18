@@ -12,3 +12,4 @@ NAMING_CONVENTION = {
 
 
 SQLModel.metadata = MetaData(naming_convention=NAMING_CONVENTION)
+
