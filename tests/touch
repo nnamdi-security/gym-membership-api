@@ -34,8 +34,11 @@ def get_auth_service(
     "/register",
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
-    summary="Register a new member",
-)
+    summary="Register a new gym member",
+    description=(
+        "Create a new FitPro member account. "
+        "Public registration always creates a MEMBER role."
+))
 def register(
     data: UserRegisterRequest,
     service: AuthService = Depends(get_auth_service),
@@ -52,8 +55,12 @@ def register(
 @router.post(
     "/login",
     response_model=TokenResponse,
+    status_code=status.HTTP_200_OK,
     summary="Log in and receive an access token",
-)
+    description=(
+        "Validate the supplied email and password and return "
+        "a bearer JWT access token."
+))
 def login(
     data: UserLoginRequest,
     service: AuthService = Depends(get_auth_service),
@@ -78,15 +85,19 @@ def login(
 @router.get(
     "/me",
     response_model=UserResponse,
+    status_code=status.HTTP_200_OK,
     summary="Get the current authenticated user",
-)
+    description=(
+        "Return the current user identified by the supplied "
+        "bearer access token."
+))
 def get_me(
     current_user: User = Depends(get_current_user),
 ):
     return current_user
 
 
-#TEMPORARY ROLE-CHECK ENDPOINTS
+#TEMPORARY ROLE-CHECK ENDPOINTS  -- REMOVE LATER
 @router.get(
     "/member-area",
     summary="Example endpoint for authenticated members",
@@ -153,3 +164,37 @@ def admin_area(
 # 7. sub is converted to user_id
 # 8. repository loads user
 # 9. route receives current_user
+
+
+
+
+
+            #     HTTP REQUEST
+            #          │
+            #          ▼
+            #   ┌─────────────┐
+            #   │   Schemas   │
+            #   │ validation  │
+            #   └──────┬──────┘
+            #          │
+            #          ▼
+            #   ┌─────────────┐
+            #   │   Router    │
+            #   │ HTTP layer  │
+            #   └──────┬──────┘
+            #          │
+            #          ▼
+            #   ┌─────────────┐
+            #   │   Service   │
+            #   │ business    │
+            #   │   logic     │
+            #   └──────┬──────┘
+            #          │
+            #          ▼
+            #   ┌─────────────┐
+            #   │ Repository  │
+            #   │ persistence │
+            #   └──────┬──────┘
+            #          │
+            #          ▼
+            #    PostgreSQL
