@@ -7,6 +7,8 @@ from app.models.user import User
 from app.core.security import create_access_token
 from datetime import timedelta
 
+from sqlmodel import Session, delete, select
+
 
 client = TestClient(app)
 
@@ -235,3 +237,135 @@ def test_me_rejects_expired_token():
     )
 
     assert response.status_code == 401
+
+
+
+
+def test_complete_authentication_flow():
+    clear_users()
+
+    # 1. Register
+    register_response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "member@example.com",
+            "password": "StrongPass123!",
+        },
+    )
+
+    assert register_response.status_code == 201
+
+    registered_user = register_response.json()
+
+    assert registered_user["email"] == "member@example.com"
+    assert registered_user["role"] == "member"
+    assert "password" not in registered_user
+    assert "password_hash" not in registered_user
+
+    # 2. Login
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "member@example.com",
+            "password": "StrongPass123!",
+        },
+    )
+
+    assert login_response.status_code == 200
+
+    login_body = login_response.json()
+
+    assert login_body["token_type"] == "bearer"
+
+    token = login_body["access_token"]
+
+    # 3. Use token
+    me_response = client.get(
+        "/api/v1/auth/me",
+        headers={
+            "Authorization": f"Bearer {token}",
+        },
+    )
+
+    assert me_response.status_code == 200
+
+    current_user = me_response.json()
+
+    assert current_user["id"] == registered_user["id"]
+    assert current_user["email"] == registered_user["email"]
+    assert current_user["role"] == "member"
+
+
+
+def test_register_rejects_invalid_email():
+    clear_users()
+
+    response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "definitely-not-an-email",
+            "password": "StrongPass123!",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+
+def test_register_rejects_short_password():
+    clear_users()
+
+    response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "member@example.com",
+            "password": "short",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+
+def test_login_rejects_invalid_request_structure():
+    clear_users()
+
+    response = client.post(
+        "/api/v1/auth/login",
+        json={
+            "email": "not-an-email",
+            "password": "short",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+
+
+
+def test_registration_never_stores_plain_text_password():
+    clear_users()
+
+    plain_password = "StrongPass123!"
+
+    response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "email": "member@example.com",
+            "password": plain_password,
+        },
+    )
+
+    assert response.status_code == 201
+
+    with Session(engine) as session:
+        user = session.exec(
+            select(User).where(
+                User.email == "member@example.com"
+            )
+        ).first()
+
+        assert user is not None
+        assert user.password_hash != plain_password
+        assert plain_password not in user.password_hash

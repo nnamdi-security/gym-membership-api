@@ -7,6 +7,8 @@ from app.models.user import User, UserRole
 from app.repositories.user import UserRepository
 from app.schemas.auth import UserLoginRequest, UserRegisterRequest
 
+from sqlalchemy.exc import IntegrityError
+
 
 class EmailAlreadyRegisteredError(Exception):
     pass
@@ -34,7 +36,10 @@ class AuthService:
             role=UserRole.MEMBER,
         )
 
-        return self.user_repository.create(user)
+        try:
+            return self.user_repository.create(user)
+        except IntegrityError:
+            raise EmailAlreadyRegisteredError from None
 
     def authenticate(self, data: UserLoginRequest) -> str:
         user = self.user_repository.get_user_by_email(

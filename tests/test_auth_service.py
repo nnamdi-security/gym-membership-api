@@ -9,6 +9,8 @@ from app.services.auth_service import (
 )
 
 
+from sqlalchemy.exc import IntegrityError
+
 class FakeUserRepository:
     def __init__(self):
         self.users = []
@@ -112,5 +114,35 @@ def test_authenticate_rejects_wrong_password():
            UserLoginRequest(
                 email="member@example.com",
                 password="WrongPass123!",
+            )
+        )
+
+
+#FAKE REPOSITORY
+class DuplicateRaceRepository:
+    def get_by_email(self, email: str):
+        # Simulates another request creating the user
+        # after our initial lookup.
+        return None
+
+    def create(self, user: User):
+        raise IntegrityError(
+            "INSERT INTO users ...",
+            {},
+            Exception("duplicate key"),
+        )
+
+
+
+
+def test_register_converts_database_duplicate_to_domain_error():
+    repository = DuplicateRaceRepository()
+    service = AuthService(repository)
+
+    with pytest.raises(EmailAlreadyRegisteredError):
+        service.register(
+            UserRegisterRequest(
+                email="member@example.com",
+                password="StrongPass123!",
             )
         )

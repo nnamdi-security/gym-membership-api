@@ -2,6 +2,8 @@ from sqlmodel import Session, select
 
 from app.models.user import User
 
+from sqlalchemy.exc import IntegrityError
+
 
 class UserRepository:
     def __init__(self, session: Session):
@@ -17,7 +19,13 @@ class UserRepository:
 
     def create(self, user: User) -> User:
         self.session.add(user)
-        self.session.commit()
+
+        try:
+            self.session.commit()
+        except IntegrityError:       #Make the repository recover its transaction
+            self.session.rollback()
+            raise
+
         self.session.refresh(user)
 
         return user
