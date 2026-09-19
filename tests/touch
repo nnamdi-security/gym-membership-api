@@ -97,6 +97,8 @@ def get_me(
     return current_user
 
 
+
+
 #TEMPORARY ROLE-CHECK ENDPOINTS  -- REMOVE LATER
 @router.get(
     "/member-area",
