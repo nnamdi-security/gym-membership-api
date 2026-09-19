@@ -2,16 +2,12 @@ import pytest
 from pydantic import ValidationError
 
 from app.models.user import UserRole
-from app.schemas.auth import (
-    LoginRequest,
-    RegisterRequest,
-    TokenResponse,
-)
+from app.schemas.auth import (UserLoginRequest, UserRegisterRequest,TokenResponse)
 from app.schemas.user import UserResponse
 
 
 def test_register_request_accepts_valid_input():
-    data = RegisterRequest(
+    data = UserRegisterRequest(
         email="member@example.com",
         password="StrongPass123!",
     )
@@ -22,7 +18,7 @@ def test_register_request_accepts_valid_input():
 
 def test_register_request_rejects_invalid_email():
     with pytest.raises(ValidationError):
-        RegisterRequest(
+        UserRegisterRequest(
             email="not-an-email",
             password="StrongPass123!",
         )
@@ -30,14 +26,14 @@ def test_register_request_rejects_invalid_email():
 
 def test_register_request_rejects_short_password():
     with pytest.raises(ValidationError):
-        RegisterRequest(
+        UserRegisterRequest(
             email="member@example.com",
             password="short",
         )
 
 
 def test_login_request_accepts_valid_input():
-    data = LoginRequest(
+    data = UserLoginRequest(
         email="member@example.com",
         password="StrongPass123!",
     )
