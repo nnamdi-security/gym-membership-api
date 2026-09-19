@@ -1,15 +1,23 @@
 from sqlmodel import Session, select
+
 from app.models.user import User
 
-def get_user_by_id(db: Session, user_id: int) -> User | None:
-    return db.get(User, user_id)
 
-def get_user_by_email(db: Session, email: str) -> User | None:
-    return db.exec(select(User).where(User.email == email)).first()
+class UserRepository:
+    def __init__(self, session: Session):
+        self.session = session
 
-def create_user(db: Session, email: str, password_hash: str, role: str = "member") -> User:
-    user = User(email+email, password_hash=password_hash, role=role)
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return User
+    def get_user_by_email(self, email: str) -> User | None:
+        statement = select(User).where(User.email == email)
+
+        return self.session.exec(statement).first()
+
+    def get_user_by_id(self, user_id: int) -> User | None:
+        return self.session.get(User, user_id)
+
+    def create(self, user: User) -> User:
+        self.session.add(user)
+        self.session.commit()
+        self.session.refresh(user)
+
+        return user
