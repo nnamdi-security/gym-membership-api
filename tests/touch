@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 
 
-from app.api.dependencies.auth import get_current_user
-from app.models.user import User
+from app.api.dependencies.auth import get_current_user, require_roles
+from app.models.user import User, UserRole
 
 from app.db.session import get_session
 from app.repositories.user import UserRepository
@@ -86,6 +86,57 @@ def get_me(
     return current_user
 
 
+#TEMPORARY ROLE-CHECK ENDPOINTS
+@router.get(
+    "/member-area",
+    summary="Example endpoint for authenticated members",
+)
+def member_area(
+    current_user: User = Depends(
+        require_roles(
+            UserRole.MEMBER,
+            UserRole.FRONT_DESK,
+            UserRole.ADMIN,
+        )
+    ),
+):
+    return {
+        "message": "Member area access granted",
+        "user_id": current_user.id,
+    }
+
+
+@router.get(
+    "/staff-area",
+    summary="Example endpoint for front desk and admin users",
+)
+def staff_area(
+    current_user: User = Depends(
+        require_roles(
+            UserRole.FRONT_DESK,
+            UserRole.ADMIN,
+        )
+    ),
+):
+    return {
+        "message": "Staff area access granted",
+        "user_id": current_user.id,
+    }
+
+
+@router.get(
+    "/admin-area",
+    summary="Example endpoint for administrators only",
+)
+def admin_area(
+    current_user: User = Depends(
+        require_roles(UserRole.ADMIN)
+    ),
+):
+    return {
+        "message": "Admin area access granted",
+        "user_id": current_user.id,
+    }
 
 
 
