@@ -52,7 +52,9 @@ def test_subscribe_creates_pending_membership_with_correct_end_date(
 
 def test_subscribe_with_invalid_plan_raises_error(membership_service, a_member):
     with pytest.raises(PlanNotFoundError):
-        membership_service.subscribe(a_member.id, MembershipSubscribeRequest(plan_id=999999))
+        membership_service.subscribe(
+            a_member.id, MembershipSubscribeRequest(plan_id=999999)
+        )
 
 
 def test_freeze_extends_end_date_and_sets_frozen(membership_service, a_plan, a_member):

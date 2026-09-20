@@ -36,8 +36,8 @@ STAFF_AREA_DEPENDENCY = Depends(
 ADMIN_AREA_DEPENDENCY = Depends(require_roles(UserRole.ADMIN))
 
 
-def get_auth_service(    
-    #This function acts as a FastAPI dependency that assembles the service for us.
+def get_auth_service(
+    # This function acts as a FastAPI dependency that assembles the service for us.
     session: Session = SESSION_DEPENDENCY,
 ) -> AuthService:
     repository = UserRepository(session)
@@ -55,7 +55,8 @@ AUTH_SERVICE_DEPENDENCY = Depends(get_auth_service)
     description=(
         "Create a new FitPro member account. "
         "Public registration always creates a MEMBER role."
-))
+    ),
+)
 def register(
     data: UserRegisterRequest,
     service: AuthService = AUTH_SERVICE_DEPENDENCY,
@@ -75,9 +76,9 @@ def register(
     status_code=status.HTTP_200_OK,
     summary="Log in and receive an access token",
     description=(
-        "Validate the supplied email and password and return "
-        "a bearer JWT access token."
-))
+        "Validate the supplied email and password and return a bearer JWT access token."
+    ),
+)
 def login(
     data: UserLoginRequest,
     service: AuthService = AUTH_SERVICE_DEPENDENCY,
@@ -96,27 +97,22 @@ def login(
     )
 
 
-
-
-
 @router.get(
     "/me",
     response_model=UserResponse,
     status_code=status.HTTP_200_OK,
     summary="Get the current authenticated user",
     description=(
-        "Return the current user identified by the supplied "
-        "bearer access token."
-))
+        "Return the current user identified by the supplied bearer access token."
+    ),
+)
 def get_me(
     current_user: User = CURRENT_USER_DEPENDENCY,
 ):
     return current_user
 
 
-
-
-#TEMPORARY ROLE-CHECK ENDPOINTS  -- REMOVE LATER
+# TEMPORARY ROLE-CHECK ENDPOINTS  -- REMOVE LATER
 @router.get(
     "/member-area",
     summary="Example endpoint for authenticated members",
@@ -156,11 +152,7 @@ def admin_area(
     }
 
 
-
-
-
-
-#THE AUTHENTICATION FLOW
+# THE AUTHENTICATION FLOW
 # 1. user logs in
 # 2. service verifies password
 # 3. server issues JWT with sub=user.id
@@ -172,35 +164,32 @@ def admin_area(
 # 9. route receives current_user
 
 
-
-
-
-            #     HTTP REQUEST
-            #          │
-            #          ▼
-            #   ┌─────────────┐
-            #   │   Schemas   │
-            #   │ validation  │
-            #   └──────┬──────┘
-            #          │
-            #          ▼
-            #   ┌─────────────┐
-            #   │   Router    │
-            #   │ HTTP layer  │
-            #   └──────┬──────┘
-            #          │
-            #          ▼
-            #   ┌─────────────┐
-            #   │   Service   │
-            #   │ business    │
-            #   │   logic     │
-            #   └──────┬──────┘
-            #          │
-            #          ▼
-            #   ┌─────────────┐
-            #   │ Repository  │
-            #   │ persistence │
-            #   └──────┬──────┘
-            #          │
-            #          ▼
-            #    PostgreSQL
+#     HTTP REQUEST
+#          │
+#          ▼
+#   ┌─────────────┐
+#   │   Schemas   │
+#   │ validation  │
+#   └──────┬──────┘
+#          │
+#          ▼
+#   ┌─────────────┐
+#   │   Router    │
+#   │ HTTP layer  │
+#   └──────┬──────┘
+#          │
+#          ▼
+#   ┌─────────────┐
+#   │   Service   │
+#   │ business    │
+#   │   logic     │
+#   └──────┬──────┘
+#          │
+#          ▼
+#   ┌─────────────┐
+#   │ Repository  │
+#   │ persistence │
+#   └──────┬──────┘
+#          │
+#          ▼
+#    PostgreSQL

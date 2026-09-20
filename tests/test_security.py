@@ -29,7 +29,13 @@ def test_verify_password_accepts_correct_password():
 def test_verify_password_rejects_wrong_password():
     hashed = hash_password("EmeraldWave123!")
 
-    assert verify_password("WrongPassword", hashed,) is False
+    assert (
+        verify_password(
+            "WrongPassword",
+            hashed,
+        )
+        is False
+    )
 
 
 def test_create_and_decode_access_token():
@@ -48,9 +54,7 @@ def test_access_token_rejects_tampering():
         subject="42",
     )
 
-    tampered_token = token[:-1] + (
-        "a" if token[-1] != "a" else "b"
-    )
+    tampered_token = token[:-1] + ("a" if token[-1] != "a" else "b")
 
     with pytest.raises(JWTError):
         decode_access_token(tampered_token)

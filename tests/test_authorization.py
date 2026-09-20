@@ -57,7 +57,6 @@ def auth_headers(token: str) -> dict[str, str]:
     }
 
 
-
 def test_member_can_access_member_area():
     clear_users()
 
@@ -74,8 +73,6 @@ def test_member_can_access_member_area():
     )
 
     assert response.status_code == 200
-
-
 
 
 def test_member_cannot_access_staff_area():
@@ -100,9 +97,6 @@ def test_member_cannot_access_staff_area():
     }
 
 
-
-
-
 def test_front_desk_can_access_staff_area():
     clear_users()
 
@@ -119,8 +113,6 @@ def test_front_desk_can_access_staff_area():
     )
 
     assert response.status_code == 200
-
-
 
 
 def test_front_desk_cannot_access_admin_area():
@@ -141,9 +133,6 @@ def test_front_desk_cannot_access_admin_area():
     assert response.status_code == 403
 
 
-
-
-
 def test_admin_can_access_admin_area():
     clear_users()
 
@@ -162,20 +151,12 @@ def test_admin_can_access_admin_area():
     assert response.status_code == 200
 
 
-
-
-
-
-
 def test_staff_area_rejects_unauthenticated_request():
     clear_users()
 
-    response = client.get(
-        "/api/v1/auth/staff-area"
-    )
+    response = client.get("/api/v1/auth/staff-area")
 
     assert response.status_code == 401
-
 
 
 def test_role_change_takes_effect_without_new_token():
@@ -214,8 +195,6 @@ def test_role_change_takes_effect_without_new_token():
     )
 
     assert second_response.status_code == 403
-
-
 
 
 def test_token_is_rejected_after_user_is_deleted():

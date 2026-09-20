@@ -1,4 +1,4 @@
-#This makes alembic discover all models
+# This makes alembic discover all models
 
 from app.models.checkin import Checkin
 from app.models.gym_class import GymClass

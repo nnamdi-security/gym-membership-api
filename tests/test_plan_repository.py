@@ -6,15 +6,13 @@ from app.db.session import engine
 from app.models.plan import Plan
 from app.repositories.plan_repository import PlanRepository
 
+from datetime import datetime, timedelta, timezone
 
-def clear_plans():
-    with Session(engine) as session:
-        session.exec(delete(Plan))
-        session.commit()
+from app.models.membership import Membership, MembershipStatus
+from app.models.user import User, UserRole
 
 
 def test_create_plan():
-    clear_plans()
 
     with Session(engine) as session:
         repository = PlanRepository(session)
@@ -33,10 +31,7 @@ def test_create_plan():
         assert created.period_days == 30
 
 
-
-
 def test_get_plan_by_id():
-    clear_plans()
 
     with Session(engine) as session:
         repository = PlanRepository(session)
@@ -56,9 +51,7 @@ def test_get_plan_by_id():
         assert found.name == "Quarterly"
 
 
-
 def test_get_by_id_returns_none_for_missing_plan():
-    clear_plans()
 
     with Session(engine) as session:
         repository = PlanRepository(session)
@@ -68,11 +61,7 @@ def test_get_by_id_returns_none_for_missing_plan():
         assert found is None
 
 
-
-
-
 def test_get_all_plans():
-    clear_plans()
 
     with Session(engine) as session:
         repository = PlanRepository(session)
@@ -100,10 +89,7 @@ def test_get_all_plans():
         assert plans[1].name == "Quarterly"
 
 
-
-
 def test_update_plan():
-    clear_plans()
 
     with Session(engine) as session:
         repository = PlanRepository(session)
@@ -123,12 +109,7 @@ def test_update_plan():
         assert updated.price == Decimal("17000.00")
 
 
-
-
-
-
 def test_delete_plan():
-    clear_plans()
 
     with Session(engine) as session:
         repository = PlanRepository(session)
@@ -148,3 +129,56 @@ def test_delete_plan():
         found = repository.get_by_id(plan_id)
 
         assert found is None
+
+
+def test_has_memberships_returns_true_for_used_plan(
+    db_session,
+):
+    repository = PlanRepository(db_session)
+
+    member = User(
+        email="member@example.com",
+        password_hash="hashed-password",
+        role=UserRole.MEMBER,
+    )
+    db_session.add(member)
+
+    plan = Plan(
+        name="Monthly",
+        price=Decimal("15000.00"),
+        period_days=30,
+    )
+    db_session.add(plan)
+
+    db_session.commit()
+    db_session.refresh(member)
+    db_session.refresh(plan)
+
+    membership = Membership(
+        member_id=member.id,
+        plan_id=plan.id,
+        start_date=datetime.now(timezone.UTC).date(),
+        end_date=datetime.now(timezone.UTC).date() + timedelta(days=30),
+        status=MembershipStatus.ACTIVE,
+    )
+
+    db_session.add(membership)
+    db_session.commit()
+
+    assert repository.has_memberships(plan.id) is True
+
+
+def test_has_memberships_returns_false_for_unused_plan(
+    db_session,
+):
+    repository = PlanRepository(db_session)
+
+    plan = repository.create(
+        Plan(
+            name="Unused",
+            price=Decimal("5000.00"),
+            period_days=7,
+        )
+    )
+
+    assert repository.has_memberships(plan.id) is False

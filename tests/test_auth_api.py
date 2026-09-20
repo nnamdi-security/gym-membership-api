@@ -58,9 +58,7 @@ def test_register_rejects_duplicate_email():
     assert first.status_code == 201
     assert second.status_code == 409
 
-    assert second.json() == {
-        "detail": "Email is already registered"
-    }
+    assert second.json() == {"detail": "Email is already registered"}
 
 
 def test_login_returns_access_token():
@@ -112,9 +110,7 @@ def test_login_rejects_wrong_password():
 
     assert response.status_code == 401
 
-    assert response.json() == {
-        "detail": "Invalid email or password"
-    }
+    assert response.json() == {"detail": "Invalid email or password"}
 
 
 def test_login_rejects_unknown_email():
@@ -151,8 +147,6 @@ def register_and_login():
     return response.json()["access_token"]
 
 
-
-
 def test_me_returns_current_user():
     clear_users()
 
@@ -176,15 +170,11 @@ def test_me_returns_current_user():
 def test_me_rejects_missing_token():
     clear_users()
 
-    response = client.get(
-        "/api/v1/auth/me"
-    )
+    response = client.get("/api/v1/auth/me")
 
     assert response.status_code == 401
 
-    assert response.json() == {
-        "detail": "Could not validate credentials"
-    }
+    assert response.json() == {"detail": "Could not validate credentials"}
 
 
 def test_me_rejects_invalid_token():
@@ -203,9 +193,7 @@ def test_me_rejects_invalid_token():
 def test_me_rejects_token_for_missing_user():
     clear_users()
 
-    token = create_access_token(
-        subject="999999"
-    )
+    token = create_access_token(subject="999999")
 
     response = client.get(
         "/api/v1/auth/me",
@@ -215,8 +203,6 @@ def test_me_rejects_token_for_missing_user():
     )
 
     assert response.status_code == 401
-
-
 
 
 def test_me_rejects_expired_token():
@@ -235,8 +221,6 @@ def test_me_rejects_expired_token():
     )
 
     assert response.status_code == 401
-
-
 
 
 def test_complete_authentication_flow():
@@ -294,7 +278,6 @@ def test_complete_authentication_flow():
     assert current_user["role"] == "member"
 
 
-
 def test_register_rejects_invalid_email():
     clear_users()
 
@@ -307,7 +290,6 @@ def test_register_rejects_invalid_email():
     )
 
     assert response.status_code == 422
-
 
 
 def test_register_rejects_short_password():
@@ -324,7 +306,6 @@ def test_register_rejects_short_password():
     assert response.status_code == 422
 
 
-
 def test_login_rejects_invalid_request_structure():
     clear_users()
 
@@ -337,9 +318,6 @@ def test_login_rejects_invalid_request_structure():
     )
 
     assert response.status_code == 422
-
-
-
 
 
 def test_registration_never_stores_plain_text_password():
@@ -359,9 +337,7 @@ def test_registration_never_stores_plain_text_password():
 
     with Session(engine) as session:
         user = session.exec(
-            select(User).where(
-                User.email == "member@example.com"
-            )
+            select(User).where(User.email == "member@example.com")
         ).first()
 
         assert user is not None

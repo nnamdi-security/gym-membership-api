@@ -42,7 +42,7 @@ def get_current_user(
 
         user_id = int(subject)
 
-    except (JWTError, ValueError, TypeError):
+    except JWTError, ValueError, TypeError:
         raise credentials_exception
 
     repository = UserRepository(session)
@@ -55,8 +55,7 @@ def get_current_user(
     return user
 
 
-
-#Role-based authorization
+# Role-based authorization
 current_user_dependency = Depends(get_current_user)
 
 
@@ -77,8 +76,7 @@ def require_roles(
     return role_checker
 
 
-
-#Authorization: Bearer <token>
+# Authorization: Bearer <token>
 #         ↓
 # extract token
 #         ↓

@@ -19,11 +19,17 @@ from app.services.membership_service import (
 router = APIRouter(prefix="/memberships", tags=["memberships"])
 
 
-def get_membership_service(session: Session = Depends(get_session)) -> MembershipService:
+def get_membership_service(
+    session: Session = Depends(get_session),
+) -> MembershipService:
     return MembershipService(MembershipRepository(session), session)
 
 
-@router.post("/subscriptions", response_model=MembershipResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/subscriptions",
+    response_model=MembershipResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 def subscribe(
     data: MembershipSubscribeRequest,
     current_user: User = Depends(require_roles(UserRole.MEMBER)),
@@ -32,7 +38,9 @@ def subscribe(
     try:
         return membership_service.subscribe(current_user.id, data)
     except PlanNotFoundError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Plan not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Plan not found"
+        )
 
 
 @router.get("/me", response_model=MembershipResponse)
@@ -43,7 +51,9 @@ def get_my_membership(
     try:
         return membership_service.get_my_membership(current_user.id)
     except MembershipNotFoundError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No active membership found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="No active membership found"
+        )
 
 
 @router.post("/{membership_id}/freeze", response_model=MembershipResponse)
@@ -56,7 +66,9 @@ def freeze_membership(
     try:
         return membership_service.freeze(membership_id, data)
     except MembershipNotFoundError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Membership not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Membership not found"
+        )
 
 
 @router.post("/{membership_id}/unfreeze", response_model=MembershipResponse)
@@ -68,4 +80,6 @@ def unfreeze_membership(
     try:
         return membership_service.unfreeze(membership_id)
     except MembershipNotFoundError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Membership not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Membership not found"
+        )

@@ -9,9 +9,12 @@ from app.main import app
 from app.models.plan import Plan
 from app.models.user import User, UserRole
 
+from datetime import date, timedelta
+
+from app.models.membership import Membership, MembershipStatus
+
+
 client = TestClient(app)
-
-
 
 
 def clear_data():
@@ -63,10 +66,7 @@ def auth_headers(token: str) -> dict[str, str]:
     }
 
 
-
-
 def test_admin_can_create_plan():
-    clear_data()
 
     create_user(
         email="admin@example.com",
@@ -94,9 +94,6 @@ def test_admin_can_create_plan():
     assert body["period_days"] == 30
 
 
-
-
-
 def test_member_cannot_create_plan():
     clear_data()
 
@@ -120,18 +117,12 @@ def test_member_cannot_create_plan():
     assert response.status_code == 403
 
 
-
-
-
 def test_unauthenticated_user_cannot_list_plans():
     clear_data()
 
-    response = client.get(
-        "/api/v1/plans"
-    )
+    response = client.get("/api/v1/plans")
 
     assert response.status_code == 401
-
 
 
 def test_member_can_list_plans():
@@ -174,8 +165,6 @@ def test_member_can_list_plans():
     assert body[0]["name"] == "Monthly"
 
 
-
-
 def test_member_can_get_plan():
     clear_data()
 
@@ -214,8 +203,6 @@ def test_member_can_get_plan():
     assert response.json()["name"] == "Quarterly"
 
 
-
-
 def test_get_missing_plan_returns_404():
     clear_data()
 
@@ -233,11 +220,7 @@ def test_get_missing_plan_returns_404():
 
     assert response.status_code == 404
 
-    assert response.json() == {
-        "detail": "Membership plan not found"
-    }
-
-
+    assert response.json() == {"detail": "Membership plan not found"}
 
 
 def test_admin_can_update_plan():
@@ -279,7 +262,6 @@ def test_admin_can_update_plan():
     assert body["period_days"] == 30
 
 
-
 def test_front_desk_cannot_update_plan():
     clear_data()
 
@@ -299,9 +281,6 @@ def test_front_desk_cannot_update_plan():
     )
 
     assert response.status_code == 403
-
-
-
 
 
 def test_admin_can_delete_unused_plan():
@@ -339,3 +318,112 @@ def test_admin_can_delete_unused_plan():
     )
 
     assert get_response.status_code == 404
+
+
+def test_admin_cannot_delete_plan_in_use():
+    admin = create_user(
+        email="admin@example.com",
+        role=UserRole.ADMIN,
+    )
+    admin_token = login(admin.email)
+
+    member = create_user(
+        email="member@example.com",
+        role=UserRole.MEMBER,
+    )
+
+    create_response = client.post(
+        "/api/v1/plans",
+        headers=auth_headers(admin_token),
+        json={
+            "name": "Monthly",
+            "price": "15000.00",
+            "period_days": 30,
+        },
+    )
+
+    assert create_response.status_code == 201
+
+    plan_id = create_response.json()["id"]
+
+    with Session(engine) as session:
+        membership = Membership(
+            member_id=member.id,
+            plan_id=plan_id,
+            start_date=date.today(),
+            end_date=date.today() + timedelta(days=30),
+            status=MembershipStatus.ACTIVE,
+        )
+
+        session.add(membership)
+        session.commit()
+
+    response = client.delete(
+        f"/api/v1/plans/{plan_id}",
+        headers=auth_headers(admin_token),
+    )
+
+    assert response.status_code == 409
+
+    assert response.json() == {
+        "detail": ("Membership plan is already in use and cannot be deleted")
+    }
+
+
+def test_front_desk_cannot_delete_plan():
+    create_user(
+        email="frontdesk@example.com",
+        role=UserRole.FRONT_DESK,
+    )
+
+    token = login("frontdesk@example.com")
+
+    response = client.delete(
+        "/api/v1/plans/999999",
+        headers=auth_headers(token),
+    )
+
+    assert response.status_code == 403
+
+
+# Verify invalid Plan input at the HTTP boundary
+def test_admin_cannot_create_plan_with_invalid_price():
+    create_user(
+        email="admin@example.com",
+        role=UserRole.ADMIN,
+    )
+
+    token = login("admin@example.com")
+
+    response = client.post(
+        "/api/v1/plans",
+        headers=auth_headers(token),
+        json={
+            "name": "Broken Plan",
+            "price": "0.00",
+            "period_days": 30,
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_admin_cannot_create_plan_with_invalid_period():
+    create_user(
+        email="admin@example.com",
+        role=UserRole.ADMIN,
+    )
+
+    token = login("admin@example.com")
+
+    response = client.post(
+        "/api/v1/plans",
+        headers=auth_headers(token),
+        json={
+            "name": "Broken Plan",
+            "price": "15000.00",
+            "period_days": 0,
+        },
+    )
+
+    assert response.status_code == 422

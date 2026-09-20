@@ -14,7 +14,7 @@ from app.services.plan_service import (
 )
 
 
-#fake repository
+# fake repository
 class FakePlanRepository:
     def __init__(self):
         self.plans: dict[int, Plan] = {}
@@ -45,9 +45,7 @@ class FakePlanRepository:
         return plan_id in self.used_plan_ids
 
 
-
-
-#PALN CREATION
+# PALN CREATION
 def test_create_plan():
     repository = FakePlanRepository()
     service = PlanService(repository)
@@ -66,9 +64,7 @@ def test_create_plan():
     assert plan.period_days == 30
 
 
-
-
-#TEST LISTING
+# TEST LISTING
 def test_list_plans():
     repository = FakePlanRepository()
     service = PlanService(repository)
@@ -102,8 +98,6 @@ def test_get_plan_raises_when_missing():
         service.get_plan(999)
 
 
-
-
 def test_update_plan_changes_only_supplied_fields():
     repository = FakePlanRepository()
     service = PlanService(repository)
@@ -128,7 +122,6 @@ def test_update_plan_changes_only_supplied_fields():
     assert updated.period_days == 30
 
 
-
 def test_delete_unused_plan():
     repository = FakePlanRepository()
     service = PlanService(repository)
@@ -144,9 +137,6 @@ def test_delete_unused_plan():
     service.delete_plan(plan.id)
 
     assert repository.get_by_id(plan.id) is None
-
-
-
 
 
 def test_delete_plan_rejects_plan_with_memberships():

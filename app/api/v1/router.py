@@ -9,19 +9,10 @@ api_router = APIRouter()
 api_router.include_router(auth_router)
 api_router.include_router(plans_router)
 
-@api_router.get(
-    "/health",
-    tags=["System"],
-    summary="Check API health"
-)
+
+@api_router.get("/health", tags=["System"], summary="Check API health")
 def health_check():
-    return {
-        "status": "ok",
-        "service": "fitpro-api"
-    }
-
-
-
+    return {"status": "ok", "service": "fitpro-api"}
 
 
 # Temporary database health endpoint

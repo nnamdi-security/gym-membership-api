@@ -6,8 +6,9 @@ from app.core.config import settings
 engine = create_engine(
     settings.database_url,
     echo=settings.debug,
-    pool_pre_ping=True, #SQLAlchemy checks that a pooled connection is alive before handing it to your code.
+    pool_pre_ping=True,  # SQLAlchemy checks that a pooled connection is alive before handing it to your code.
 )
+
 
 def get_database():
     with Session(engine) as session:

@@ -21,7 +21,7 @@ class UserRepository:
 
         try:
             self.session.commit()
-        except IntegrityError:       #Make the repository recover its transaction
+        except IntegrityError:  # Make the repository recover its transaction
             self.session.rollback()
             raise
 

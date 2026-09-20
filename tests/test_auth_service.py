@@ -110,14 +110,14 @@ def test_authenticate_rejects_wrong_password():
 
     with pytest.raises(InvalidCredentialsError):
         service.authenticate(
-           UserLoginRequest(
+            UserLoginRequest(
                 email="member@example.com",
                 password="WrongPass123!",
             )
         )
 
 
-#FAKE REPOSITORY
+# FAKE REPOSITORY
 class DuplicateRaceRepository:
     def get_by_email(self, email: str):
         # Simulates another request creating the user
@@ -130,8 +130,6 @@ class DuplicateRaceRepository:
             {},
             Exception("duplicate key"),
         )
-
-
 
 
 def test_register_converts_database_duplicate_to_domain_error():

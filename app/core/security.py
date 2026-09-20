@@ -19,7 +19,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def create_access_token(subject: str, expires_delta: timedelta | None = None) -> str:
-    expire = datetime.now(UTC) + (expires_delta if expires_delta is not None else timedelta(minutes=settings.access_token_expire_minutes))
+    expire = datetime.now(UTC) + (
+        expires_delta
+        if expires_delta is not None
+        else timedelta(minutes=settings.access_token_expire_minutes)
+    )
 
     payload = {
         "sub": subject,

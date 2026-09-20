@@ -11,8 +11,13 @@ class ProcessedEvent(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
 
-    event_id: str = Field(sa_column=Column(String(255), nullable=False, unique=True, index=True))
+    event_id: str = Field(
+        sa_column=Column(String(255), nullable=False, unique=True, index=True)
+    )
 
     reference: str = Field(sa_column=Column(String(255), nullable=False))
 
-    processed_at: datetime = Field(default_factory=utc_now, sa_column=Column(DateTime(timezone=True), nullable=False))
+    processed_at: datetime = Field(
+        default_factory=utc_now,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
