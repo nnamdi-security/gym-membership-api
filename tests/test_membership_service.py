@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -45,8 +45,9 @@ def test_subscribe_creates_pending_membership_with_correct_end_date(
     )
 
     assert membership.status == MembershipStatus.PENDING
-    assert membership.start_date == date.today()
-    assert membership.end_date == date.today() + timedelta(days=a_plan.period_days)
+    today = datetime.now(tz=timezone.UTC).date()
+    assert membership.start_date == today
+    assert membership.end_date == today + timedelta(days=a_plan.period_days)
 
 
 def test_subscribe_with_invalid_plan_raises_error(membership_service, a_member):

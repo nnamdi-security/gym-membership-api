@@ -1,6 +1,6 @@
 from sqlmodel import Session, select
-from app.models.membership import Membership
 
+from app.models.membership import Membership
 from app.models.plan import Plan
 
 

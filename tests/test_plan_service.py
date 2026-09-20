@@ -14,8 +14,6 @@ from app.services.plan_service import (
 )
 
 
-
-
 #fake repository
 class FakePlanRepository:
     def __init__(self):

@@ -1,12 +1,13 @@
 from fastapi import APIRouter, HTTPException, status
 
 from app.api.v1.auth import router as auth_router
+from app.api.v1.plans import router as plans_router
 from app.db.session import check_database_connection
 
 api_router = APIRouter()
 
 api_router.include_router(auth_router)
-
+api_router.include_router(plans_router)
 
 @api_router.get(
     "/health",

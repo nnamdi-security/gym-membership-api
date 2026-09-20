@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import UTC, datetime, timedelta
 
 from sqlmodel import Session
 
@@ -26,7 +26,7 @@ class MembershipService:
         if plan is None:
             raise PlanNotFoundError
 
-        start_date = date.today()
+        start_date = datetime.now(tz=UTC).date()
         end_date = start_date + timedelta(days=plan.period_days)
 
         membership = Membership(
