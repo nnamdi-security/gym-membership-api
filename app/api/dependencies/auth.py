@@ -1,3 +1,6 @@
+from collections.abc import Callable
+from typing import Annotated
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
@@ -5,27 +8,19 @@ from sqlmodel import Session
 
 from app.core.security import decode_access_token
 from app.db.session import get_session
-from app.models.user import User
-from app.repositories.user import UserRepository
-
-
-from collections.abc import Callable
-
-from fastapi import Depends, HTTPException, status
-
 from app.models.user import User, UserRole
-
+from app.repositories.user import UserRepository
 
 bearer_scheme = HTTPBearer(
     auto_error=False,
 )
+bearer_dependency = Depends(bearer_scheme)
+session_dependency = Depends(get_session)
 
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials | None = Depends(
-        bearer_scheme
-    ),
-    session: Session = Depends(get_session),
+    credentials: Annotated[HTTPAuthorizationCredentials, bearer_dependency],
+    session: Session = session_dependency,
 ) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -62,11 +57,14 @@ def get_current_user(
 
 
 #Role-based authorization
+current_user_dependency = Depends(get_current_user)
+
+
 def require_roles(
     *allowed_roles: UserRole,
 ) -> Callable:
     def role_checker(
-        current_user: User = Depends(get_current_user),
+        current_user: User = current_user_dependency,
     ) -> User:
         if current_user.role not in allowed_roles:
             raise HTTPException(

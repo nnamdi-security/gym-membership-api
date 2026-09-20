@@ -1,4 +1,5 @@
 import pytest
+from sqlalchemy.exc import IntegrityError
 
 from app.models.user import User, UserRole
 from app.schemas.auth import UserLoginRequest, UserRegisterRequest
@@ -8,8 +9,6 @@ from app.services.auth_service import (
     InvalidCredentialsError,
 )
 
-
-from sqlalchemy.exc import IntegrityError
 
 class FakeUserRepository:
     def __init__(self):

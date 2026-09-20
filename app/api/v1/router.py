@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, status
+
 from app.api.v1.auth import router as auth_router
 from app.db.session import check_database_connection
 
@@ -31,7 +32,7 @@ def health_check():
 def database_health_check():
     try:
         check_database_connection()
-    except Exception:
+    except Exception:  # noqa: BLE001
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Database is unavailable",

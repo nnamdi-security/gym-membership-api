@@ -1,8 +1,7 @@
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from app.models.user import User
-
-from sqlalchemy.exc import IntegrityError
 
 
 class UserRepository:

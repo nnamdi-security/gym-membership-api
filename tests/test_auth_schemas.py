@@ -2,7 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from app.models.user import UserRole
-from app.schemas.auth import (UserLoginRequest, UserRegisterRequest,TokenResponse)
+from app.schemas.auth import TokenResponse, UserLoginRequest, UserRegisterRequest
 from app.schemas.user import UserResponse
 
 

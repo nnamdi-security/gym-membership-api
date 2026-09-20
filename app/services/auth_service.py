@@ -1,3 +1,5 @@
+from sqlalchemy.exc import IntegrityError
+
 from app.core.security import (
     create_access_token,
     hash_password,
@@ -6,8 +8,6 @@ from app.core.security import (
 from app.models.user import User, UserRole
 from app.repositories.user import UserRepository
 from app.schemas.auth import UserLoginRequest, UserRegisterRequest
-
-from sqlalchemy.exc import IntegrityError
 
 
 class EmailAlreadyRegisteredError(Exception):
@@ -23,9 +23,7 @@ class AuthService:
         self.user_repository = user_repository
 
     def register(self, data: UserRegisterRequest) -> User:
-        existing_user = self.user_repository.get_user_by_email(
-            str(data.email)
-        )
+        existing_user = self.user_repository.get_user_by_email(str(data.email))
 
         if existing_user is not None:
             raise EmailAlreadyRegisteredError
@@ -42,9 +40,7 @@ class AuthService:
             raise EmailAlreadyRegisteredError from None
 
     def authenticate(self, data: UserLoginRequest) -> str:
-        user = self.user_repository.get_user_by_email(
-            str(data.email)
-        )
+        user = self.user_repository.get_user_by_email(str(data.email))
 
         if user is None:
             raise InvalidCredentialsError
@@ -55,14 +51,10 @@ class AuthService:
         ):
             raise InvalidCredentialsError
 
-        return create_access_token(
-            subject=str(user.id)
-        )
+        return create_access_token(subject=str(user.id))
 
 
-
-
-#LoginRequest
+# LoginRequest
 #      ↓
 # find user by email
 #      ↓

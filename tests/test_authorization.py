@@ -6,7 +6,6 @@ from app.db.session import engine
 from app.main import app
 from app.models.user import User, UserRole
 
-
 client = TestClient(app)
 
 

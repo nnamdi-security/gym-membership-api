@@ -1,10 +1,14 @@
-from app.core.security import hash_password, verify_password
 from datetime import timedelta
 
 import pytest
 from jose import ExpiredSignatureError, JWTError
 
-from app.core.security import create_access_token, decode_access_token, hash_password, verify_password
+from app.core.security import (
+    create_access_token,
+    decode_access_token,
+    hash_password,
+    verify_password,
+)
 
 
 def test_hash_password_does_not_store_plain_text():

@@ -1,14 +1,12 @@
-from fastapi.testclient import TestClient
-from sqlmodel import Session, delete
+from datetime import timedelta
 
+from fastapi.testclient import TestClient
+from sqlmodel import Session, delete, select
+
+from app.core.security import create_access_token
 from app.db.session import engine
 from app.main import app
 from app.models.user import User
-from app.core.security import create_access_token
-from datetime import timedelta
-
-from sqlmodel import Session, delete, select
-
 
 client = TestClient(app)
 
