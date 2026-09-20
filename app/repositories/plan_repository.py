@@ -1,4 +1,5 @@
 from sqlmodel import Session, select
+from app.models.membership import Membership
 
 from app.models.plan import Plan
 
@@ -21,6 +22,7 @@ class PlanRepository:
         self.session.refresh(plan)
 
         return plan
+    
 
     def update(self, plan: Plan) -> Plan:
         self.session.add(plan)
@@ -33,3 +35,13 @@ class PlanRepository:
     def delete(self, plan: Plan) -> None:
         self.session.delete(plan)
         self.session.commit()
+
+
+    def has_memberships(self, plan_id: int) -> bool:
+        statement = (
+            select(Membership.id)
+            .where(Membership.plan_id == plan_id)
+            .limit(1)
+        )
+
+        return self.session.exec(statement).first() is not None
