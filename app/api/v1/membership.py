@@ -228,3 +228,26 @@ def unfreeze_membership(
             status_code=status.HTTP_409_CONFLICT,
             detail="Membership cannot be unfrozen in its current state",
         )
+
+
+
+
+
+
+
+
+
+
+# PENDING_PAYMENT
+#     │
+#     ├── blocks another pending subscription
+#     │
+#     ▼
+# ACTIVE ────────┐
+#                │ both count as the
+# FROZEN ────────┘ current membership
+
+# EXPIRED
+# CANCELLED
+#     ↓
+# do not block a future subscription
