@@ -6,7 +6,7 @@ from app.db.session import get_session
 from app.models.user import User, UserRole
 from app.repositories.membership_repository import MembershipRepository
 from app.repositories.plan_repository import PlanRepository
-from app.repositories.user_repository import UserRepository
+from app.repositories.user import UserRepository
 from app.schemas.membership import (
     MembershipCreateForMemberRequest,
     MembershipCreateRequest,
@@ -16,6 +16,8 @@ from app.services.membership_service import (
     ActiveMembershipExistsError,
     InvalidMemberRoleError,
     MemberNotFoundError,
+    MembershipCannotBeFrozenError,
+    MembershipCannotBeUnfrozenError,
     MembershipNotFoundError,
     MembershipService,
     PendingMembershipExistsError,
@@ -174,4 +176,55 @@ def get_membership(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Membership not found",
+        )
+
+
+# staff/admin API endpoints to freeze and unfreeze memberships
+@router.post(
+    "/{membership_id}/freeze",
+    response_model=MembershipResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Freeze a membership",
+    dependencies=[STAFF_USER_DEPENDENCY],
+)
+def freeze_membership(
+    membership_id: int,
+    service: MembershipService = MEMBERSHIP_SERVICE_DEPENDENCY,
+):
+    try:
+        return service.freeze_membership(membership_id)
+    except MembershipNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Membership not found",
+        )
+    except MembershipCannotBeFrozenError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Membership cannot be frozen in its current state",
+        )
+
+
+@router.post(
+    "/{membership_id}/unfreeze",
+    response_model=MembershipResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Unfreeze a membership",
+    dependencies=[STAFF_USER_DEPENDENCY],
+)
+def unfreeze_membership(
+    membership_id: int,
+    service: MembershipService = MEMBERSHIP_SERVICE_DEPENDENCY,
+):
+    try:
+        return service.unfreeze_membership(membership_id)
+    except MembershipNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Membership not found",
+        )
+    except MembershipCannotBeUnfrozenError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Membership cannot be unfrozen in its current state",
         )

@@ -15,6 +15,8 @@ from app.services.membership_service import (
     InvalidMemberRoleError,
     MemberNotFoundError,
     MembershipCannotBeActivatedError,
+    MembershipCannotBeFrozenError,
+    MembershipCannotBeUnfrozenError,
     MembershipService,
     PendingMembershipExistsError,
     PlanNotFoundError,
@@ -292,4 +294,87 @@ def test_activate_rejects_non_pending_membership():
         service.activate_membership(
             membership.id,
             activation_date=date(2026, 9, 21),
+        )
+
+
+def test_freeze_active_membership():
+    service, repository, _, _ = build_service()
+
+    membership = repository.create(
+        Membership(
+            member_id=1,
+            plan_id=1,
+            status=MembershipStatus.ACTIVE,
+            start_date=date(2026, 9, 1),
+            end_date=date(2026, 10, 1),
+        )
+    )
+
+    frozen = service.freeze_membership(
+        membership.id,
+        freeze_date=date(2026, 9, 10),
+    )
+
+    assert frozen.status == MembershipStatus.FROZEN
+
+
+def test_freeze_rejects_pending_membership():
+    service, repository, _, _ = build_service()
+
+    membership = repository.create(
+        Membership(
+            member_id=1,
+            plan_id=1,
+            status=MembershipStatus.PENDING_PAYMENT,
+        )
+    )
+
+    with pytest.raises(MembershipCannotBeFrozenError):
+        service.freeze_membership(
+            membership.id,
+            freeze_date=date(2026, 9, 10),
+        )
+
+
+def test_unfreeze_extends_end_date_by_frozen_days():
+    service, repository, _, _ = build_service()
+
+    membership = repository.create(
+        Membership(
+            member_id=1,
+            plan_id=1,
+            status=MembershipStatus.FROZEN,
+            start_date=date(2026, 9, 1),
+            end_date=date(2026, 10, 1),
+            frozen_on=date(2026, 9, 10),
+        )
+    )
+
+    unfrozen = service.unfreeze_membership(
+        membership.id,
+        unfreeze_date=date(2026, 9, 20),
+    )
+
+    assert unfrozen.status == MembershipStatus.ACTIVE
+    assert unfrozen.frozen_on is None
+    assert unfrozen.end_date == date(2026, 10, 11)
+
+
+def test_unfreeze_rejects_non_frozen_membership():
+    service, repository, _, _ = build_service()
+
+    membership = repository.create(
+        Membership(
+            member_id=1,
+            plan_id=1,
+            status=MembershipStatus.ACTIVE,
+            start_date=date(2026, 9, 1),
+            end_date=date(2026, 10, 1),
+        )
+    )
+
+    with pytest.raises(MembershipCannotBeUnfrozenError):
+        service.unfreeze_membership(
+            membership.id,
+            unfreeze_date=date(2026, 9, 20),
         )

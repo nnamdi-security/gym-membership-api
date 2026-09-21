@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta, timezone
 
 from app.models.membership import Membership, MembershipStatus
 from app.models.user import UserRole
@@ -36,6 +36,14 @@ class PendingMembershipExistsError(Exception):
 
 
 class MembershipCannotBeActivatedError(Exception):
+    pass
+
+
+class MembershipCannotBeFrozenError(Exception):
+    pass
+
+
+class MembershipCannotBeUnfrozenError(Exception):
     pass
 
 
@@ -155,3 +163,61 @@ class MembershipService:
 
         if user.role != UserRole.MEMBER:
             raise InvalidMemberRoleError
+
+    def freeze_membership(
+        self,
+        membership_id: int,
+        freeze_date: date | None = None,
+    ) -> Membership:
+        membership = self.get_membership(membership_id)
+
+        if membership.status != MembershipStatus.ACTIVE:
+            raise MembershipCannotBeFrozenError
+
+        if membership.start_date is None or membership.end_date is None:
+            raise MembershipCannotBeFrozenError
+
+        effective_date = freeze_date or date.today()
+
+        if effective_date < membership.start_date:
+            raise MembershipCannotBeFrozenError
+
+        if effective_date >= membership.end_date:
+            raise MembershipCannotBeFrozenError
+
+        membership.status = MembershipStatus.FROZEN
+        membership.frozen_on = effective_date
+        membership.updated_at = datetime.now(UTC)
+
+        return self.membership_repository.update(membership)
+
+    def unfreeze_membership(
+        self,
+        membership_id: int,
+        unfreeze_date: date | None = None,
+    ) -> Membership:
+        membership = self.get_membership(membership_id)
+
+        if membership.status != MembershipStatus.FROZEN:
+            raise MembershipCannotBeUnfrozenError
+
+        if membership.frozen_on is None:
+            raise MembershipCannotBeUnfrozenError
+
+        if membership.end_date is None:
+            raise MembershipCannotBeUnfrozenError
+
+        effective_date = unfreeze_date or date.today()
+
+        if effective_date < membership.frozen_on:
+            raise MembershipCannotBeUnfrozenError
+
+        frozen_days = (effective_date - membership.frozen_on).days
+
+        membership.end_date = membership.end_date + timedelta(days=frozen_days)
+
+        membership.status = MembershipStatus.ACTIVE
+        membership.frozen_on = None
+        membership.updated_at = datetime.now(UTC)
+
+        return self.membership_repository.update(membership)
