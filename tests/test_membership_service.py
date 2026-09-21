@@ -144,7 +144,7 @@ def build_service():
 
 
 def test_member_can_create_pending_membership():
-    service, repository, _, _ = build_service()
+    service, _, _, _ = build_service()
 
     membership = service.create_for_current_member(
         member_id=1,
