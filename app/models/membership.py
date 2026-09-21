@@ -35,12 +35,18 @@ class Membership(SQLModel, table=True):
 
     end_date: date | None = Field(default=None, sa_column=Column(Date, nullable=True))
 
-    status: MembershipStatus = Field(default=MembershipStatus.PENDING_PAYMENT, nullable=False)
+    status: MembershipStatus = Field(
+        default=MembershipStatus.PENDING_PAYMENT, nullable=False
+    )
 
     frozen_on: date | None = Field(default=None, sa_column=Column(Date, nullable=True))
 
-    created_at: datetime = Field(default_factory=utc_now, sa_column=Column(DateTime(timezone=True), nullable=False))
+    created_at: datetime = Field(
+        default_factory=utc_now,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
 
-    updated_at: datetime = Field(default_factory=utc_now, sa_column=Column(DateTime(timezone=True), nullable=False))
-
-  
+    updated_at: datetime = Field(
+        default_factory=utc_now,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )

@@ -65,7 +65,11 @@ def get_my_membership(
         )
 
 
-@router.post("/{membership_id}/freeze", response_model=MembershipResponse, dependencies=[FRONT_DESK_USER_DEP])
+@router.post(
+    "/{membership_id}/freeze",
+    response_model=MembershipResponse,
+    dependencies=[FRONT_DESK_USER_DEP],
+)
 def freeze_membership(
     membership_id: int,
     data: MembershipFreezeRequest,
@@ -79,7 +83,11 @@ def freeze_membership(
         )
 
 
-@router.post("/{membership_id}/unfreeze", response_model=MembershipResponse, dependencies=[FRONT_DESK_USER_DEP])
+@router.post(
+    "/{membership_id}/unfreeze",
+    response_model=MembershipResponse,
+    dependencies=[FRONT_DESK_USER_DEP],
+)
 def unfreeze_membership(
     membership_id: int,
     membership_service: MembershipService = MEMBERSHIP_SERVICE_DEP,

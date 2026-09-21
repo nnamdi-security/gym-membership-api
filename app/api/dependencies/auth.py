@@ -42,7 +42,7 @@ def get_current_user(
 
         user_id = int(subject)
 
-    except (JWTError, ValueError, TypeError):
+    except JWTError, ValueError, TypeError:
         raise credentials_exception
 
     repository = UserRepository(session)

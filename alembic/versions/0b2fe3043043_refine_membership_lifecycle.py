@@ -76,13 +76,9 @@ def upgrade() -> None:
         """
     )
 
-    op.execute(
-        "DROP TYPE membershipstatus"
-    )
+    op.execute("DROP TYPE membershipstatus")
 
-    op.execute(
-        "ALTER TYPE membershipstatus_new RENAME TO membershipstatus"
-    )
+    op.execute("ALTER TYPE membershipstatus_new RENAME TO membershipstatus")
 
     op.create_index(
         op.f("ix_memberships_end_date_status"),
@@ -156,13 +152,9 @@ def downgrade() -> None:
         """
     )
 
-    op.execute(
-        "DROP TYPE membershipstatus"
-    )
+    op.execute("DROP TYPE membershipstatus")
 
-    op.execute(
-        "ALTER TYPE membershipstatus_old RENAME TO membershipstatus"
-    )
+    op.execute("ALTER TYPE membershipstatus_old RENAME TO membershipstatus")
 
     op.create_index(
         op.f("ix_memberships_end_date_status"),
