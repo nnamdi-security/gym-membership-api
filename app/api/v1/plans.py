@@ -52,7 +52,7 @@ def list_plans(service: PlanService = PLAN_SERVICE_DEPENDENCY):
     response_model=PlanResponse,
     status_code=status.HTTP_200_OK,
     summary="Get a membership plan",
-    dependencies=[CURRENT_USER_DEPENDENCY]
+    dependencies=[CURRENT_USER_DEPENDENCY],
 )
 def get_plan(plan_id: int, service: PlanService = PLAN_SERVICE_DEPENDENCY):
     try:

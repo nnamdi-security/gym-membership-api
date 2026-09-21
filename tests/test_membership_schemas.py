@@ -60,7 +60,6 @@ def test_staff_create_accepts_member_and_plan():
     assert data.plan_id == 2
 
 
-
 def test_pending_membership_response_allows_empty_dates():
     now = datetime.now(UTC)
 
