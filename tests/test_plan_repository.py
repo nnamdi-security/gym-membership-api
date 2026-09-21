@@ -1,15 +1,13 @@
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
-from sqlmodel import Session, delete
+from sqlmodel import Session
 
 from app.db.session import engine
-from app.models.plan import Plan
-from app.repositories.plan_repository import PlanRepository
-
-from datetime import datetime, timedelta, timezone
-
 from app.models.membership import Membership, MembershipStatus
+from app.models.plan import Plan
 from app.models.user import User, UserRole
+from app.repositories.plan_repository import PlanRepository
 
 
 def test_create_plan():

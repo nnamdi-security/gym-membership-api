@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from fastapi.testclient import TestClient
@@ -6,13 +7,9 @@ from sqlmodel import Session, delete
 from app.core.security import hash_password
 from app.db.session import engine
 from app.main import app
+from app.models.membership import Membership, MembershipStatus
 from app.models.plan import Plan
 from app.models.user import User, UserRole
-
-from datetime import date, timedelta
-
-from app.models.membership import Membership, MembershipStatus
-
 
 client = TestClient(app)
 
@@ -350,8 +347,8 @@ def test_admin_cannot_delete_plan_in_use():
         membership = Membership(
             member_id=member.id,
             plan_id=plan_id,
-            start_date=date.today(),
-            end_date=date.today() + timedelta(days=30),
+            start_date=datetime.now(tz=timezone.UTC).date(),
+            end_date=datetime.now(tz=timezone.UTC).date() + timedelta(days=30),
             status=MembershipStatus.ACTIVE,
         )
 

@@ -1,3 +1,5 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 
@@ -18,11 +20,18 @@ from app.services.membership_service import (
 
 router = APIRouter(prefix="/memberships", tags=["memberships"])
 
+SESSION_DEP = Depends(get_session)
+MEMBER_USER_DEP = Depends(require_roles(UserRole.MEMBER))
+FRONT_DESK_USER_DEP = Depends(require_roles(UserRole.FRONT_DESK))
+
 
 def get_membership_service(
-    session: Session = Depends(get_session),
+    session: Annotated[Session, SESSION_DEP],
 ) -> MembershipService:
     return MembershipService(MembershipRepository(session), session)
+
+
+MEMBERSHIP_SERVICE_DEP = Depends(get_membership_service)
 
 
 @router.post(
@@ -32,8 +41,8 @@ def get_membership_service(
 )
 def subscribe(
     data: MembershipSubscribeRequest,
-    current_user: User = Depends(require_roles(UserRole.MEMBER)),
-    membership_service: MembershipService = Depends(get_membership_service),
+    current_user: User = MEMBER_USER_DEP,
+    membership_service: MembershipService = MEMBERSHIP_SERVICE_DEP,
 ):
     try:
         return membership_service.subscribe(current_user.id, data)
@@ -45,8 +54,8 @@ def subscribe(
 
 @router.get("/me", response_model=MembershipResponse)
 def get_my_membership(
-    current_user: User = Depends(require_roles(UserRole.MEMBER)),
-    membership_service: MembershipService = Depends(get_membership_service),
+    current_user: User = MEMBER_USER_DEP,
+    membership_service: MembershipService = MEMBERSHIP_SERVICE_DEP,
 ):
     try:
         return membership_service.get_my_membership(current_user.id)
@@ -56,12 +65,11 @@ def get_my_membership(
         )
 
 
-@router.post("/{membership_id}/freeze", response_model=MembershipResponse)
+@router.post("/{membership_id}/freeze", response_model=MembershipResponse, dependencies=[FRONT_DESK_USER_DEP])
 def freeze_membership(
     membership_id: int,
     data: MembershipFreezeRequest,
-    current_user: User = Depends(require_roles(UserRole.FRONT_DESK)),
-    membership_service: MembershipService = Depends(get_membership_service),
+    membership_service: MembershipService = MEMBERSHIP_SERVICE_DEP,
 ):
     try:
         return membership_service.freeze(membership_id, data)
@@ -71,11 +79,10 @@ def freeze_membership(
         )
 
 
-@router.post("/{membership_id}/unfreeze", response_model=MembershipResponse)
+@router.post("/{membership_id}/unfreeze", response_model=MembershipResponse, dependencies=[FRONT_DESK_USER_DEP])
 def unfreeze_membership(
     membership_id: int,
-    current_user: User = Depends(require_roles(UserRole.FRONT_DESK)),
-    membership_service: MembershipService = Depends(get_membership_service),
+    membership_service: MembershipService = MEMBERSHIP_SERVICE_DEP,
 ):
     try:
         return membership_service.unfreeze(membership_id)
