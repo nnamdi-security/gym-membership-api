@@ -1,85 +1,295 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date
+from decimal import Decimal
 
 import pytest
 
-from app.models.membership import MembershipStatus
+from app.models.membership import Membership, MembershipStatus
 from app.models.plan import Plan
 from app.models.user import User, UserRole
-from app.repositories.membership import MembershipRepository
-from app.schemas.membership import MembershipFreezeRequest, MembershipSubscribeRequest
+from app.schemas.membership import (
+    MembershipCreateForMemberRequest,
+    MembershipCreateRequest,
+)
 from app.services.membership_service import (
-    MembershipNotFoundError,
+    ActiveMembershipExistsError,
+    InvalidMemberRoleError,
+    MemberNotFoundError,
+    MembershipCannotBeActivatedError,
     MembershipService,
+    PendingMembershipExistsError,
     PlanNotFoundError,
 )
 
 
-@pytest.fixture
-def membership_service(db_session):
-    return MembershipService(MembershipRepository(db_session), db_session)
+class FakeMembershipRepository:
+    def __init__(self):
+        self.memberships: dict[int, Membership] = {}
+        self.next_id = 1
+
+    def get_by_id(
+        self,
+        membership_id: int,
+    ) -> Membership | None:
+        return self.memberships.get(membership_id)
+
+    def get_for_member(
+        self,
+        member_id: int,
+    ) -> list[Membership]:
+        return [
+            membership
+            for membership in self.memberships.values()
+            if membership.member_id == member_id
+        ]
+
+    def get_active_for_member(
+        self,
+        member_id: int,
+    ) -> Membership | None:
+        for membership in self.memberships.values():
+            if (
+                membership.member_id == member_id
+                and membership.status == MembershipStatus.ACTIVE
+            ):
+                return membership
+
+        return None
+
+    def get_pending_for_member(
+        self,
+        member_id: int,
+    ) -> Membership | None:
+        for membership in self.memberships.values():
+            if (
+                membership.member_id == member_id
+                and membership.status == MembershipStatus.PENDING_PAYMENT
+            ):
+                return membership
+
+        return None
+
+    def create(
+        self,
+        membership: Membership,
+    ) -> Membership:
+        membership.id = self.next_id
+        self.next_id += 1
+
+        self.memberships[membership.id] = membership
+
+        return membership
+
+    def update(
+        self,
+        membership: Membership,
+    ) -> Membership:
+        self.memberships[membership.id] = membership
+
+        return membership
 
 
-@pytest.fixture
-def a_plan(db_session):
-    plan = Plan(name="Monthly", price=15000, period_days=30)
-    db_session.add(plan)
-    db_session.commit()
-    db_session.refresh(plan)
-    return plan
+class FakePlanRepository:
+    def __init__(self):
+        self.plans: dict[int, Plan] = {}
+
+    def get_by_id(
+        self,
+        plan_id: int,
+    ) -> Plan | None:
+        return self.plans.get(plan_id)
 
 
-@pytest.fixture
-def a_member(db_session):
-    user = User(email="member@example.com", password_hash="x", role=UserRole.MEMBER)
-    db_session.add(user)
-    db_session.commit()
-    db_session.refresh(user)
-    return user
+class FakeUserRepository:
+    def __init__(self):
+        self.users: dict[int, User] = {}
+
+    def get_by_id(
+        self,
+        user_id: int,
+    ) -> User | None:
+        return self.users.get(user_id)
 
 
-def test_subscribe_creates_pending_membership_with_correct_end_date(
-    membership_service, a_plan, a_member
-):
-    membership = membership_service.subscribe(
-        a_member.id, MembershipSubscribeRequest(plan_id=a_plan.id)
+def build_service():
+    membership_repository = FakeMembershipRepository()
+    plan_repository = FakePlanRepository()
+    user_repository = FakeUserRepository()
+
+    user_repository.users[1] = User(
+        id=1,
+        email="member@example.com",
+        password_hash="hash",
+        role=UserRole.MEMBER,
     )
 
-    assert membership.status == MembershipStatus.PENDING
-    today = datetime.now(tz=timezone.UTC).date()
-    assert membership.start_date == today
-    assert membership.end_date == today + timedelta(days=a_plan.period_days)
+    plan_repository.plans[1] = Plan(
+        id=1,
+        name="Monthly",
+        price=Decimal("15000.00"),
+        period_days=30,
+    )
+
+    service = MembershipService(
+        membership_repository,
+        plan_repository,
+        user_repository,
+    )
+
+    return (
+        service,
+        membership_repository,
+        plan_repository,
+        user_repository,
+    )
 
 
-def test_subscribe_with_invalid_plan_raises_error(membership_service, a_member):
+def test_member_can_create_pending_membership():
+    service, repository, _, _ = build_service()
+
+    membership = service.create_for_current_member(
+        member_id=1,
+        data=MembershipCreateRequest(
+            plan_id=1,
+        ),
+    )
+
+    assert membership.id == 1
+    assert membership.member_id == 1
+    assert membership.plan_id == 1
+    assert membership.status == MembershipStatus.PENDING_PAYMENT
+    assert membership.start_date is None
+    assert membership.end_date is None
+
+
+def test_create_rejects_missing_plan():
+    service, _, _, _ = build_service()
+
     with pytest.raises(PlanNotFoundError):
-        membership_service.subscribe(
-            a_member.id, MembershipSubscribeRequest(plan_id=999999)
+        service.create_for_current_member(
+            member_id=1,
+            data=MembershipCreateRequest(
+                plan_id=999,
+            ),
         )
 
 
-def test_freeze_extends_end_date_and_sets_frozen(membership_service, a_plan, a_member):
-    membership = membership_service.subscribe(
-        a_member.id, MembershipSubscribeRequest(plan_id=a_plan.id)
+def test_create_rejects_missing_member():
+    service, _, _, _ = build_service()
+
+    with pytest.raises(MemberNotFoundError):
+        service.create_for_current_member(
+            member_id=999,
+            data=MembershipCreateRequest(
+                plan_id=1,
+            ),
+        )
+
+
+def test_create_rejects_non_member_user():
+    service, _, _, user_repository = build_service()
+
+    user_repository.users[2] = User(
+        id=2,
+        email="admin@example.com",
+        password_hash="hash",
+        role=UserRole.ADMIN,
     )
-    original_end_date = membership.end_date
 
-    frozen = membership_service.freeze(membership.id, MembershipFreezeRequest(days=10))
+    with pytest.raises(InvalidMemberRoleError):
+        service.create_for_current_member(
+            member_id=2,
+            data=MembershipCreateRequest(
+                plan_id=1,
+            ),
+        )
 
-    assert frozen.status == MembershipStatus.FROZEN
-    assert frozen.end_date == original_end_date + timedelta(days=10)
 
+def test_create_rejects_member_with_active_membership():
+    service, repository, _, _ = build_service()
 
-def test_unfreeze_sets_status_back_to_active(membership_service, a_plan, a_member):
-    membership = membership_service.subscribe(
-        a_member.id, MembershipSubscribeRequest(plan_id=a_plan.id)
+    repository.create(
+        Membership(
+            member_id=1,
+            plan_id=1,
+            status=MembershipStatus.ACTIVE,
+        )
     )
-    membership_service.freeze(membership.id, MembershipFreezeRequest(days=10))
 
-    unfrozen = membership_service.unfreeze(membership.id)
+    with pytest.raises(ActiveMembershipExistsError):
+        service.create_for_current_member(
+            member_id=1,
+            data=MembershipCreateRequest(
+                plan_id=1,
+            ),
+        )
 
-    assert unfrozen.status == MembershipStatus.ACTIVE
+
+def test_create_rejects_duplicate_pending_membership():
+    service, _, _, _ = build_service()
+
+    data = MembershipCreateRequest(
+        plan_id=1,
+    )
+
+    service.create_for_current_member(
+        member_id=1,
+        data=data,
+    )
+
+    with pytest.raises(PendingMembershipExistsError):
+        service.create_for_current_member(
+            member_id=1,
+            data=data,
+        )
 
 
-def test_freeze_nonexistent_membership_raises_error(membership_service):
-    with pytest.raises(MembershipNotFoundError):
-        membership_service.freeze(999999, MembershipFreezeRequest(days=10))
+def test_staff_flow_can_create_pending_membership_for_member():
+    service, _, _, _ = build_service()
+
+    membership = service.create_for_member(
+        MembershipCreateForMemberRequest(
+            member_id=1,
+            plan_id=1,
+        )
+    )
+
+    assert membership.member_id == 1
+    assert membership.status == MembershipStatus.PENDING_PAYMENT
+
+
+def test_activate_membership_calculates_dates():
+    service, _, _, _ = build_service()
+
+    membership = service.create_for_current_member(
+        member_id=1,
+        data=MembershipCreateRequest(
+            plan_id=1,
+        ),
+    )
+
+    activated = service.activate_membership(
+        membership.id,
+        activation_date=date(2026, 9, 21),
+    )
+
+    assert activated.status == MembershipStatus.ACTIVE
+    assert activated.start_date == date(2026, 9, 21)
+    assert activated.end_date == date(2026, 10, 21)
+
+
+def test_activate_rejects_non_pending_membership():
+    service, repository, _, _ = build_service()
+
+    membership = repository.create(
+        Membership(
+            member_id=1,
+            plan_id=1,
+            status=MembershipStatus.ACTIVE,
+        )
+    )
+
+    with pytest.raises(MembershipCannotBeActivatedError):
+        service.activate_membership(
+            membership.id,
+            activation_date=date(2026, 9, 21),
+        )

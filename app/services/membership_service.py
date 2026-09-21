@@ -1,64 +1,157 @@
-from datetime import UTC, datetime, timedelta
-
-from sqlmodel import Session
+from datetime import date, datetime, timedelta, timezone
 
 from app.models.membership import Membership, MembershipStatus
-from app.models.plan import Plan
-from app.repositories.membership import MembershipRepository
-from app.schemas.membership import MembershipFreezeRequest, MembershipSubscribeRequest
-
-
-class PlanNotFoundError(Exception):
-    pass
+from app.models.user import UserRole
+from app.repositories.membership_repository import MembershipRepository
+from app.repositories.plan_repository import PlanRepository
+from app.repositories.user import UserRepository
+from app.schemas.membership import (
+    MembershipCreateForMemberRequest,
+    MembershipCreateRequest,
+)
 
 
 class MembershipNotFoundError(Exception):
     pass
 
 
-class MembershipService:
-    def __init__(self, membership_repository: MembershipRepository, session: Session):
-        self.membership_repository = membership_repository
-        self.session = session
+class MemberNotFoundError(Exception):
+    pass
 
-    def subscribe(self, member_id: int, data: MembershipSubscribeRequest) -> Membership:
-        plan = self.session.get(Plan, data.plan_id)
+
+class InvalidMemberRoleError(Exception):
+    pass
+
+
+class PlanNotFoundError(Exception):
+    pass
+
+
+class ActiveMembershipExistsError(Exception):
+    pass
+
+
+class PendingMembershipExistsError(Exception):
+    pass
+
+
+class MembershipCannotBeActivatedError(Exception):
+    pass
+
+
+class MembershipService:
+    def __init__(
+        self,
+        membership_repository: MembershipRepository,
+        plan_repository: PlanRepository,
+        user_repository: UserRepository,
+    ):
+        self.membership_repository = membership_repository
+        self.plan_repository = plan_repository
+        self.user_repository = user_repository
+
+    def create_for_current_member(
+        self,
+        member_id: int,
+        data: MembershipCreateRequest,
+    ) -> Membership:
+        return self._create_pending_membership(
+            member_id=member_id,
+            plan_id=data.plan_id,
+        )
+
+    def create_for_member(
+        self,
+        data: MembershipCreateForMemberRequest,
+    ) -> Membership:
+        return self._create_pending_membership(
+            member_id=data.member_id,
+            plan_id=data.plan_id,
+        )
+
+    def get_membership(
+        self,
+        membership_id: int,
+    ) -> Membership:
+        membership = self.membership_repository.get_by_id(membership_id)
+
+        if membership is None:
+            raise MembershipNotFoundError
+
+        return membership
+
+    def get_member_history(
+        self,
+        member_id: int,
+    ) -> list[Membership]:
+        self._validate_member(member_id)
+
+        return self.membership_repository.get_for_member(member_id)
+
+    def activate_membership(
+        self,
+        membership_id: int,
+        activation_date: date | None = None,
+    ) -> Membership:
+        membership = self.get_membership(membership_id)
+
+        if membership.status != MembershipStatus.PENDING_PAYMENT:
+            raise MembershipCannotBeActivatedError
+
+        plan = self.plan_repository.get_by_id(membership.plan_id)
+
         if plan is None:
             raise PlanNotFoundError
 
-        start_date = datetime.now(tz=UTC).date()
-        end_date = start_date + timedelta(days=plan.period_days)
+        start_date = activation_date or datetime.now(timezone.UTC).date()
+
+        membership.start_date = start_date
+        membership.end_date = start_date + timedelta(days=plan.period_days)
+        membership.status = MembershipStatus.ACTIVE
+        membership.updated_at = datetime.now(timezone.UTC)
+
+        return self.membership_repository.update(membership)
+
+    def _create_pending_membership(
+        self,
+        member_id: int,
+        plan_id: int,
+    ) -> Membership:
+        self._validate_member(member_id)
+
+        plan = self.plan_repository.get_by_id(plan_id)
+
+        if plan is None:
+            raise PlanNotFoundError
+
+        active_membership = self.membership_repository.get_active_for_member(member_id)
+
+        if active_membership is not None:
+            raise ActiveMembershipExistsError
+
+        pending_membership = self.membership_repository.get_pending_for_member(
+            member_id
+        )
+
+        if pending_membership is not None:
+            raise PendingMembershipExistsError
 
         membership = Membership(
             member_id=member_id,
-            plan_id=plan.id,
-            start_date=start_date,
-            end_date=end_date,
-        )  # status defaults to PENDING — becomes ACTIVE once payment is recorded
+            plan_id=plan_id,
+            status=MembershipStatus.PENDING_PAYMENT,
+        )
 
         return self.membership_repository.create(membership)
 
-    def get_my_membership(self, member_id: int) -> Membership:
-        membership = self.membership_repository.get_active_by_member_id(member_id)
-        if membership is None:
-            raise MembershipNotFoundError
-        return membership
+    def _validate_member(
+        self,
+        member_id: int,
+    ) -> None:
+        user = self.user_repository.get_by_id(member_id)
 
-    def freeze(self, membership_id: int, data: MembershipFreezeRequest) -> Membership:
-        membership = self.membership_repository.get_by_id(membership_id)
-        if membership is None:
-            raise MembershipNotFoundError
+        if user is None:
+            raise MemberNotFoundError
 
-        membership.end_date = membership.end_date + timedelta(days=data.days)
-        membership.status = MembershipStatus.FROZEN
-
-        return self.membership_repository.update(membership)
-
-    def unfreeze(self, membership_id: int) -> Membership:
-        membership = self.membership_repository.get_by_id(membership_id)
-        if membership is None:
-            raise MembershipNotFoundError
-
-        membership.status = MembershipStatus.ACTIVE
-
-        return self.membership_repository.update(membership)
+        if user.role != UserRole.MEMBER:
+            raise InvalidMemberRoleError
