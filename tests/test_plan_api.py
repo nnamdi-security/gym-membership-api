@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from fastapi.testclient import TestClient
@@ -347,8 +347,8 @@ def test_admin_cannot_delete_plan_in_use():
         membership = Membership(
             member_id=member.id,
             plan_id=plan_id,
-            start_date=datetime.now(tz=timezone.UTC).date(),
-            end_date=datetime.now(tz=timezone.UTC).date() + timedelta(days=30),
+            start_date=datetime.now(tz=UTC).date(),
+            end_date=datetime.now(tz=UTC).date() + timedelta(days=30),
             status=MembershipStatus.ACTIVE,
         )
 
