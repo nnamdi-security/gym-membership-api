@@ -8,10 +8,11 @@ from app.models.base import utc_now
 
 
 class MembershipStatus(StrEnum):
-    PENDING = "pending"
+    PENDING_PAYMENT = "pending_payment"
     ACTIVE = "active"
     FROZEN = "frozen"
     EXPIRED = "expired"
+    CANCELLED = "cancelled"
 
 
 class Membership(SQLModel, table=True):
@@ -30,18 +31,16 @@ class Membership(SQLModel, table=True):
 
     plan_id: int = Field(foreign_key="plans.id", nullable=False)
 
-    start_date: date = Field(sa_column=Column(Date, nullable=False))
+    start_date: date | None = Field(default=None, sa_column=Column(Date, nullable=True))
 
-    end_date: date = Field(sa_column=Column(Date, nullable=False))
+    end_date: date | None = Field(default=None, sa_column=Column(Date, nullable=True))
 
-    status: MembershipStatus = Field(default=MembershipStatus.PENDING, nullable=False)
+    status: MembershipStatus = Field(default=MembershipStatus.PENDING_PAYMENT, nullable=False)
 
-    created_at: datetime = Field(
-        default_factory=utc_now,
-        sa_column=Column(DateTime(timezone=True), nullable=False),
-    )
+    frozen_on: date | None = Field(default=None, sa_column=Column(Date, nullable=True))
 
-    updated_at: datetime = Field(
-        default_factory=utc_now,
-        sa_column=Column(DateTime(timezone=True), nullable=False),
-    )
+    created_at: datetime = Field(default_factory=utc_now, sa_column=Column(DateTime(timezone=True), nullable=False))
+
+    updated_at: datetime = Field(default_factory=utc_now, sa_column=Column(DateTime(timezone=True), nullable=False))
+
+  
