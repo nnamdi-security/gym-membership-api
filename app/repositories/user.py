@@ -1,8 +1,7 @@
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, select
 
 from app.models.user import User
-
-from sqlalchemy.exc import IntegrityError
 
 
 class UserRepository:
@@ -22,7 +21,7 @@ class UserRepository:
 
         try:
             self.session.commit()
-        except IntegrityError:       #Make the repository recover its transaction
+        except IntegrityError:  # Make the repository recover its transaction
             self.session.rollback()
             raise
 

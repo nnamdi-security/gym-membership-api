@@ -21,8 +21,16 @@ class GymClass(SQLModel, table=True):
 
     capacity: int = Field(nullable=False, gt=0)
 
-    starts_at: datetime = Field(sa_column=Column(DateTime(timezone=True), nullable=False))
+    starts_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False)
+    )
 
-    created_at: datetime = Field(default_factory=utc_now, sa_column=Column(DateTime(timezone=True), nullable=False))
+    created_at: datetime = Field(
+        default_factory=utc_now,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
 
-    updated_at: datetime = Field(default_factory=utc_now, sa_column=Column(DateTime(timezone=True), nullable=False))
+    updated_at: datetime = Field(
+        default_factory=utc_now,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )

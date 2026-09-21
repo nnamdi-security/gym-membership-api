@@ -34,16 +34,6 @@
 #     assert found is None
 
 
-
-
-
-
-
-
-
-
-
-
 from sqlmodel import Session
 
 from app.db.session import engine
@@ -80,9 +70,7 @@ def test_get_user_by_email():
             )
         )
 
-        found_user = repository.get_user_by_email(
-            "member@example.com"
-        )
+        found_user = repository.get_user_by_email("member@example.com")
 
         assert found_user is not None
         assert found_user.id == user.id
@@ -110,9 +98,7 @@ def test_get_by_email_returns_none_when_user_missing():
     with Session(engine) as session:
         repository = UserRepository(session)
 
-        user = repository.get_user_by_email(
-            "missing@example.com"
-        )
+        user = repository.get_user_by_email("missing@example.com")
 
         assert user is None
 

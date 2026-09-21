@@ -22,4 +22,7 @@ class Checkin(SQLModel, table=True):
 
     member_id: int = Field(foreign_key="users.id", nullable=False)
 
-    checked_in_at: datetime = Field(default_factory=utc_now, sa_column=Column(DateTime(timezone=True), nullable=False))
+    checked_in_at: datetime = Field(
+        default_factory=utc_now,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )

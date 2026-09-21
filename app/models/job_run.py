@@ -22,4 +22,7 @@ class JobRun(SQLModel, table=True):
 
     run_date: date = Field(sa_column=Column(Date, nullable=False))
 
-    created_at: datetime = Field(default_factory=utc_now, sa_column=Column(DateTime(timezone=True), nullable=False))
+    created_at: datetime = Field(
+        default_factory=utc_now,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )

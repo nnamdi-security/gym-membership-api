@@ -18,4 +18,7 @@ class Payment(SQLModel, table=True):
 
     recorded_by: int = Field(foreign_key="users.id", nullable=False)
 
-    recorded_at: datetime = Field(default_factory=utc_now, sa_column=Column(DateTime(timezone=True), nullable=False))
+    recorded_at: datetime = Field(
+        default_factory=utc_now,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
