@@ -7,7 +7,7 @@ from jose import JWTError
 from sqlmodel import Session
 
 from app.core.security import decode_access_token
-from app.db.session import get_database
+from app.db.session import get_session
 from app.models.user import User, UserRole
 from app.repositories.user import UserRepository
 
@@ -15,7 +15,7 @@ bearer_scheme = HTTPBearer(
     auto_error=False,
 )
 bearer_dependency = Depends(bearer_scheme)
-session_dependency = Depends(get_database)
+session_dependency = Depends(get_session)
 
 
 def get_current_user(
@@ -42,7 +42,7 @@ def get_current_user(
 
         user_id = int(subject)
 
-    except JWTError, ValueError, TypeError:
+    except (JWTError, ValueError, TypeError):
         raise credentials_exception
 
     repository = UserRepository(session)

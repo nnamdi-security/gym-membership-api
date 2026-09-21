@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 
 from app.api.dependencies.auth import get_current_user, require_roles
-from app.db.session import get_database
+from app.db.session import get_session
 from app.models.user import User, UserRole
 from app.repositories.user import UserRepository
 from app.schemas.auth import TokenResponse, UserLoginRequest, UserRegisterRequest
@@ -18,7 +18,7 @@ router = APIRouter(
     tags=["Authentication"],
 )
 
-SESSION_DEPENDENCY = Depends(get_database)
+SESSION_DEPENDENCY = Depends(get_session)
 CURRENT_USER_DEPENDENCY = Depends(get_current_user)
 MEMBER_AREA_DEPENDENCY = Depends(
     require_roles(
