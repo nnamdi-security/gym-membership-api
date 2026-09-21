@@ -7,7 +7,7 @@ from jose import JWTError
 from sqlmodel import Session
 
 from app.core.security import decode_access_token
-from app.db.session import get_session
+from app.db.session import get_database
 from app.models.user import User, UserRole
 from app.repositories.user import UserRepository
 
@@ -15,7 +15,7 @@ bearer_scheme = HTTPBearer(
     auto_error=False,
 )
 bearer_dependency = Depends(bearer_scheme)
-session_dependency = Depends(get_session)
+session_dependency = Depends(get_database)
 
 
 def get_current_user(

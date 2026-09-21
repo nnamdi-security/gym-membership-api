@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 
 from app.api.dependencies.auth import require_roles
-from app.db.session import get_session
+from app.db.session import get_database
 from app.models.user import User, UserRole
 from app.repositories.membership import MembershipRepository
 from app.schemas.membership import (
@@ -20,7 +20,7 @@ from app.services.membership_service import (
 
 router = APIRouter(prefix="/memberships", tags=["memberships"])
 
-SESSION_DEP = Depends(get_session)
+SESSION_DEP = Depends(get_database)
 MEMBER_USER_DEP = Depends(require_roles(UserRole.MEMBER))
 FRONT_DESK_USER_DEP = Depends(require_roles(UserRole.FRONT_DESK))
 
