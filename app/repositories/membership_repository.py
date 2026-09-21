@@ -23,6 +23,7 @@ class MembershipRepository:
         return list(self.session.exec(statement).all())
 
     def get_active_for_member(
+        #  Is this member currently entitled to use the gym?
         self,
         member_id: int,
     ) -> Membership | None:
@@ -67,6 +68,28 @@ def get_pending_for_member(
         .where(
             Membership.member_id == member_id,
             Membership.status == MembershipStatus.PENDING_PAYMENT,
+        )
+        .order_by(Membership.id.desc())
+    )
+
+    return self.session.exec(statement).first()
+
+
+def get_current_for_member(
+    # Does this member already have an existing live membership, including one temporarily frozen?
+    self,
+    member_id: int,
+) -> Membership | None:
+    statement = (
+        select(Membership)
+        .where(
+            Membership.member_id == member_id,
+            Membership.status.in_(
+                [
+                    MembershipStatus.ACTIVE,
+                    MembershipStatus.FROZEN,
+                ]
+            ),
         )
         .order_by(Membership.id.desc())
     )

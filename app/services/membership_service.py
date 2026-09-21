@@ -27,7 +27,7 @@ class PlanNotFoundError(Exception):
     pass
 
 
-class ActiveMembershipExistsError(Exception):
+class CurrentMembershipExistsError(Exception):
     pass
 
 
@@ -132,10 +132,12 @@ class MembershipService:
         if plan is None:
             raise PlanNotFoundError
 
-        active_membership = self.membership_repository.get_active_for_member(member_id)
+        current_membership = self.membership_repository.get_current_for_member(
+            member_id
+        )
 
-        if active_membership is not None:
-            raise ActiveMembershipExistsError
+        if current_membership is not None:
+            raise CurrentMembershipExistsError
 
         pending_membership = self.membership_repository.get_pending_for_member(
             member_id

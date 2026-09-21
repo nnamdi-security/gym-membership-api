@@ -13,7 +13,7 @@ from app.schemas.membership import (
     MembershipResponse,
 )
 from app.services.membership_service import (
-    ActiveMembershipExistsError,
+    CurrentMembershipExistsError,
     InvalidMemberRoleError,
     MemberNotFoundError,
     MembershipCannotBeFrozenError,
@@ -82,10 +82,10 @@ def create_membership(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Membership plan not found",
         )
-    except ActiveMembershipExistsError:
+    except CurrentMembershipExistsError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Member already has an active membership",
+            detail="Member already has a current membership",
         )
     except PendingMembershipExistsError:
         raise HTTPException(
@@ -145,10 +145,10 @@ def create_membership_for_member(
             detail="Membership plan not found",
         )
 
-    except ActiveMembershipExistsError:
+    except CurrentMembershipExistsError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Member already has an active membership",
+            detail="Member already has a current membership",
         )
 
     except PendingMembershipExistsError:

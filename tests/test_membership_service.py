@@ -11,7 +11,7 @@ from app.schemas.membership import (
     MembershipCreateRequest,
 )
 from app.services.membership_service import (
-    ActiveMembershipExistsError,
+    CurrentMembershipExistsError,
     InvalidMemberRoleError,
     MemberNotFoundError,
     MembershipCannotBeActivatedError,
@@ -217,7 +217,7 @@ def test_create_rejects_member_with_active_membership():
         )
     )
 
-    with pytest.raises(ActiveMembershipExistsError):
+    with pytest.raises(CurrentMembershipExistsError):
         service.create_for_current_member(
             member_id=1,
             data=MembershipCreateRequest(
@@ -377,4 +377,27 @@ def test_unfreeze_rejects_non_frozen_membership():
         service.unfreeze_membership(
             membership.id,
             unfreeze_date=date(2026, 9, 20),
+        )
+
+
+def test_create_rejects_member_with_frozen_membership():
+    service, repository, _, _ = build_service()
+
+    repository.create(
+        Membership(
+            member_id=1,
+            plan_id=1,
+            status=MembershipStatus.FROZEN,
+            start_date=date(2026, 9, 1),
+            end_date=date(2026, 10, 1),
+            frozen_on=date(2026, 9, 10),
+        )
+    )
+
+    with pytest.raises(CurrentMembershipExistsError):
+        service.create_for_current_member(
+            member_id=1,
+            data=MembershipCreateRequest(
+                plan_id=1,
+            ),
         )
