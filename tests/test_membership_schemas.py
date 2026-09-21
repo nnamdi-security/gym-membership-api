@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -62,7 +62,7 @@ def test_staff_create_accepts_member_and_plan():
 
 
 def test_pending_membership_response_allows_empty_dates():
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     response = MembershipResponse(
         id=1,

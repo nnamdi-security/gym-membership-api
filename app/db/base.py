@@ -1,5 +1,3 @@
-from sqlalchemy import MetaData
-from sqlmodel import SQLModel
 
 NAMING_CONVENTION = {
     "ix": "ix_%(column_0_label)s",
@@ -9,5 +7,3 @@ NAMING_CONVENTION = {
     "pk": "pk_%(table_name)s",
 }
 
-
-SQLModel.metadata = MetaData(naming_convention=NAMING_CONVENTION)
