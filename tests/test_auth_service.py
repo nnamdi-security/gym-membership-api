@@ -119,7 +119,7 @@ def test_authenticate_rejects_wrong_password():
 
 # FAKE REPOSITORY
 class DuplicateRaceRepository:
-    def get_by_email(self, email: str):
+    def get_user_by_email(self, email: str):
         # Simulates another request creating the user
         # after our initial lookup.
         return None
