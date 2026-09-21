@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 
 from app.api.dependencies.auth import get_current_user, require_roles
-from app.db.session import get_session
+from app.db.session import get_database
 from app.models.user import UserRole
 from app.repositories.plan_repository import PlanRepository
 from app.schemas.plan import (
@@ -21,7 +21,7 @@ router = APIRouter(
     tags=["Membership Plans"],
 )
 
-SESSION_DEPENDENCY = Depends(get_session)
+SESSION_DEPENDENCY = Depends(get_database)
 
 
 def get_plan_service(
@@ -41,7 +41,7 @@ ADMIN_USER_DEPENDENCY = Depends(require_roles(UserRole.ADMIN))
     response_model=list[PlanResponse],
     status_code=status.HTTP_200_OK,
     summary="List membership plans",
-    dependencies=CURRENT_USER_DEPENDENCY,
+    dependencies=[CURRENT_USER_DEPENDENCY],
 )
 def list_plans(service: PlanService = PLAN_SERVICE_DEPENDENCY):
     return service.list_plans()
@@ -52,7 +52,7 @@ def list_plans(service: PlanService = PLAN_SERVICE_DEPENDENCY):
     response_model=PlanResponse,
     status_code=status.HTTP_200_OK,
     summary="Get a membership plan",
-    dependencies=CURRENT_USER_DEPENDENCY,
+    dependencies=[CURRENT_USER_DEPENDENCY]
 )
 def get_plan(plan_id: int, service: PlanService = PLAN_SERVICE_DEPENDENCY):
     try:
@@ -69,7 +69,7 @@ def get_plan(plan_id: int, service: PlanService = PLAN_SERVICE_DEPENDENCY):
     response_model=PlanResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create a membership plan",
-    dependencies=ADMIN_USER_DEPENDENCY,
+    dependencies=[ADMIN_USER_DEPENDENCY],
 )
 def create_plan(
     data: PlanCreateRequest, service: PlanService = PLAN_SERVICE_DEPENDENCY
@@ -82,7 +82,7 @@ def create_plan(
     response_model=PlanResponse,
     status_code=status.HTTP_200_OK,
     summary="Update a membership plan",
-    dependencies=ADMIN_USER_DEPENDENCY,
+    dependencies=[ADMIN_USER_DEPENDENCY],
 )
 def update_plan(
     plan_id: int,
@@ -105,7 +105,7 @@ def update_plan(
     "/{plan_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete an unused membership plan",
-    depencdencies=ADMIN_USER_DEPENDENCY,
+    dependencies=[ADMIN_USER_DEPENDENCY],
 )
 def delete_plan(plan_id: int, service: PlanService = PLAN_SERVICE_DEPENDENCY):
     try:
