@@ -1,5 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 
+from app.api.v1.auth import router as auth_router
+from app.api.v1.membership import router as membership_router
 from app.api.v1.membership import router as memberships_router
 from app.api.v1.plans import router as plans_router
 from app.api.v1.webhooks import router as webhooks_router
