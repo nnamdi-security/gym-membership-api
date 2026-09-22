@@ -34,3 +34,18 @@ class PaymentResponse(BaseModel):
     model_config = ConfigDict(
         from_attributes=True,
     )
+
+
+
+class OnlinePaymentInitializeRequest(BaseModel):
+    membership_id: int = Field(gt=0)
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+
+
+
+class OnlinePaymentInitializeResponse(BaseModel):
+    payment: PaymentResponse
+    checkout_url: str | None

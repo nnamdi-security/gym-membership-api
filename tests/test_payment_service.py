@@ -1,5 +1,5 @@
 from decimal import Decimal
-
+from app.repositories.user import UserRepository
 import pytest
 from sqlmodel import Session
 
@@ -26,6 +26,8 @@ from app.services.payment_service import (
     InvalidStaffPaymentMethodError,
     MembershipNotAwaitingPaymentError,
     PaymentService,
+    PendingOnlinePaymentExistsError,
+    MembershipNotFoundError
 )
 
 
@@ -239,4 +241,143 @@ def build_payment_service(
         payment_repository=PaymentRepository(session),
         membership_repository=MembershipRepository(session),
         plan_repository=PlanRepository(session),
+        user_repository=UserRepository(session),
+        payment_provider=FakeProvider(),
     )
+
+
+
+
+
+from app.services.payment_provider import (
+    PaymentInitialization,
+)
+
+
+class FakeProvider:
+    @property
+    def name(self) -> str:
+        return "test-provider"
+
+    def initialize_payment(
+        self,
+        *,
+        reference,
+        amount,
+        email,
+    ):
+        return PaymentInitialization(
+            provider=self.name,
+            checkout_url=(
+                f"https://provider.test/{reference}"
+            ),
+        )
+
+
+
+
+
+
+def test_online_initialization_creates_pending_payment(
+    db_session,
+):
+    member, plan, membership = (
+        create_pending_membership(
+            db_session
+        )
+    )
+
+    service = build_payment_service(
+        db_session
+    )
+
+    result = service.initialize_online_payment(
+        membership_id=membership.id,
+        member_id=member.id,
+    )
+
+    assert (
+        result.payment.status
+        == PaymentStatus.PENDING
+    )
+    assert (
+        result.payment.method
+        == PaymentMethod.ONLINE
+    )
+    assert result.payment.amount == plan.price
+    assert result.payment.recorded_by is None
+    assert result.payment.paid_at is None
+    assert result.checkout_url is not None
+
+    db_session.refresh(membership)
+
+    assert (
+        membership.status
+        == MembershipStatus.PENDING_PAYMENT
+    )
+
+
+
+def test_online_initialization_rejects_duplicate_pending_attempt(
+    db_session,
+):
+    member, _, membership = (
+        create_pending_membership(
+            db_session
+        )
+    )
+
+    service = build_payment_service(
+        db_session
+    )
+
+    service.initialize_online_payment(
+        membership_id=membership.id,
+        member_id=member.id,
+    )
+
+    with pytest.raises(
+        PendingOnlinePaymentExistsError
+    ):
+        service.initialize_online_payment(
+            membership_id=membership.id,
+            member_id=member.id,
+        )
+
+
+
+
+
+
+
+
+def test_online_initialization_rejects_another_members_membership(
+    db_session,
+):
+        member, _, membership = (
+            create_pending_membership(
+                db_session
+            )
+        )
+
+        other = User(
+            email="other@example.com",
+            password_hash="hash",
+            role=UserRole.MEMBER,
+        )
+
+        db_session.add(other)
+        db_session.commit()
+        db_session.refresh(other)
+
+        service = build_payment_service(
+            db_session
+        )
+
+        with pytest.raises(
+            MembershipNotFoundError
+        ):
+            service.initialize_online_payment(
+                membership_id=membership.id,
+                member_id=other.id,
+            )

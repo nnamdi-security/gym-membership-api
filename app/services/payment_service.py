@@ -1,37 +1,18 @@
-# This service should decide:
-
-# whether the membership exists;
-# whether it is still awaiting payment;
-# whether the selected payment method is valid for staff use;
-# how much should be charged;
-# how to generate the payment reference;
-# how to activate the membership after successful payment;
-# how to avoid duplicate successful payments for the same pending membership.
-
-
-
-
-
-from datetime import datetime, timezone, timedelta
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from secrets import token_urlsafe
 
-from app.models.membership import MembershipStatus
-from app.models.payment import (
-    Payment,
-    PaymentMethod,
-    PaymentStatus,
-)
-
+from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session
 
-from app.repositories.membership_repository import (
-    MembershipRepository,
-)
-from app.repositories.payment_repository import (
-    PaymentRepository,
-)
+from app.models.membership import MembershipStatus
+from app.models.payment import Payment, PaymentMethod, PaymentStatus
+from app.repositories.membership_repository import MembershipRepository
+from app.repositories.payment_repository import PaymentRepository
 from app.repositories.plan_repository import PlanRepository
+from app.repositories.user import UserRepository
 from app.schemas.payment import StaffPaymentRequest
+from app.services.payment_provider import PaymentProvider
 
 
 class PaymentNotFoundError(Exception):
@@ -58,6 +39,20 @@ class MembershipAlreadyPaidError(Exception):
     pass
 
 
+class PendingOnlinePaymentExistsError(Exception):
+    pass
+
+
+class MemberNotFoundError(Exception):
+    pass
+
+
+@dataclass
+class OnlinePaymentResult:
+    payment: Payment
+    checkout_url: str | None
+
+
 class PaymentService:
     def __init__(
         self,
@@ -65,11 +60,15 @@ class PaymentService:
         payment_repository: PaymentRepository,
         membership_repository: MembershipRepository,
         plan_repository: PlanRepository,
+        user_repository: UserRepository,
+        payment_provider: PaymentProvider,
     ):
         self.session = session
         self.payment_repository = payment_repository
         self.membership_repository = membership_repository
         self.plan_repository = plan_repository
+        self.user_repository = user_repository
+        self.payment_provider = payment_provider
 
     def get_payment(
         self,
@@ -168,7 +167,7 @@ class PaymentService:
 
             self.session.commit()
 
-        except Exception:
+        except SQLAlchemyError:
             self.session.rollback()
             raise
 
@@ -177,9 +176,79 @@ class PaymentService:
 
         return payment
 
+    def initialize_online_payment(
+        self,
+        membership_id: int,
+        member_id: int,
+    ) -> OnlinePaymentResult:
+        membership = self.membership_repository.get_by_id(
+            membership_id
+        )
 
-    # The reference is: generated server-side; difficult to guess; highly unlikely to collide.
+        if membership is None:
+            raise MembershipNotFoundError
 
-    # PostgreSQL still has: UNIQUE(reference) as the final guarantee.
+        if membership.member_id != member_id:
+            raise MembershipNotFoundError
+
+        if (
+            membership.status
+            != MembershipStatus.PENDING_PAYMENT
+        ):
+            raise MembershipNotAwaitingPaymentError
+
+        existing_pending = (
+            self.payment_repository.get_pending_online_for_membership(
+                membership.id
+            )
+        )
+
+        if existing_pending is not None:
+            raise PendingOnlinePaymentExistsError
+
+        plan = self.plan_repository.get_by_id(
+            membership.plan_id
+        )
+
+        if plan is None:
+            raise PlanNotFoundError
+
+        member = self.user_repository.get_by_id(
+            member_id
+        )
+
+        if member is None:
+            raise MemberNotFoundError
+
+        reference = self._generate_reference()
+
+        initialization = (
+            self.payment_provider.initialize_payment(
+                reference=reference,
+                amount=plan.price,
+                email=member.email,
+            )
+        )
+
+        payment = Payment(
+            membership_id=membership.id,
+            amount=plan.price,
+            status=PaymentStatus.PENDING,
+            method=PaymentMethod.ONLINE,
+            reference=reference,
+            provider=initialization.provider,
+            recorded_by=None,
+            paid_at=None,
+        )
+
+        created_payment = self.payment_repository.create(
+            payment
+        )
+
+        return OnlinePaymentResult(
+            payment=created_payment,
+            checkout_url=initialization.checkout_url,
+        )
+
     def _generate_reference(self) -> str:
         return f"FITPRO-{token_urlsafe(16)}"

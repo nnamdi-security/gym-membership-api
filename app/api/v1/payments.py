@@ -17,8 +17,22 @@ from app.services.payment_service import (
     PaymentNotFoundError,
     PaymentService,
     PlanNotFoundError,
+    PendingOnlinePaymentExistsError
 )
 
+from app.api.dependencies.auth import (
+    get_current_user,
+    require_roles,
+)
+from app.repositories.user import UserRepository
+from app.schemas.payment import (
+    OnlinePaymentInitializeRequest,
+    PaymentResponse,
+    StaffPaymentRequest,
+)
+from app.services.fake_payment_provider import (
+    FakePaymentProvider,
+)
 
 router = APIRouter(
     prefix="/payments",
@@ -35,6 +49,9 @@ STAFF_USER_DEPENDENCY = Depends(
     )
 )
 
+MEMBER_USER_DEPENDENCY = Depends(
+    require_roles(UserRole.MEMBER)
+)
 
 # Service dependency
 def get_payment_service(
@@ -43,12 +60,16 @@ def get_payment_service(
     payment_repository = PaymentRepository(session)
     membership_repository = MembershipRepository(session)
     plan_repository = PlanRepository(session)
+    user_repository = UserRepository(session)
+    payment_provider = FakePaymentProvider()
 
     return PaymentService(
         session=session,
         payment_repository=payment_repository,
         membership_repository=membership_repository,
         plan_repository=plan_repository,
+        user_repository=user_repository,
+        payment_provider=payment_provider,
     )
 
 
@@ -136,6 +157,55 @@ def get_membership_payments(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Membership not found",
+        )
+
+
+@router.post(
+    "/online/initialize",
+    response_model=PaymentResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Initialize an online membership payment",
+    description=(
+        "Create a pending online payment for one of the "
+        "authenticated member's pending memberships."
+    ),
+)
+def initialize_online_payment(
+    data: OnlinePaymentInitializeRequest,
+    current_user: User = MEMBER_USER_DEPENDENCY,
+    service: PaymentService = PAYMENT_SERVICE_DEPENDENCY,
+):
+    try:
+        return service.initialize_online_payment(
+            membership_id=data.membership_id,
+            member_id=current_user.id,
+        )
+
+    except MembershipNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Membership not found",
+        )
+
+    except MembershipNotAwaitingPaymentError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Membership is not awaiting payment",
+        )
+
+    except PendingOnlinePaymentExistsError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "A pending online payment already exists "
+                "for this membership"
+            ),
+        )
+
+    except PlanNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Membership plan not found",
         )
 
 # Staff/admin payment lookup/inspect

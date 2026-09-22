@@ -6,6 +6,12 @@ from app.models.payment import Payment
 
 from app.models.payment import Payment, PaymentStatus
 
+from app.models.payment import (
+    Payment,
+    PaymentMethod,
+    PaymentStatus,
+)
+
 class PaymentRepository:
     def __init__(self, session: Session):
         self.session = session
@@ -98,3 +104,21 @@ class PaymentRepository:
         self.session.add(payment)
 
         return payment
+
+
+    # Repository method for pending online payments
+    def get_pending_online_for_membership(
+        self,
+        membership_id: int,
+    ) -> Payment | None:
+        statement = (
+            select(Payment)
+            .where(
+                Payment.membership_id == membership_id,
+                Payment.status == PaymentStatus.PENDING,
+                Payment.method == PaymentMethod.ONLINE,
+            )
+            .order_by(Payment.id.desc())
+        )
+
+        return self.session.exec(statement).first()

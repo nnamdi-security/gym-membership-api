@@ -329,3 +329,39 @@ def test_staff_can_view_membership_payment_history():
         payments[0]["membership_id"]
         == membership.id
     )
+
+
+
+
+
+def test_member_can_initialize_online_payment():
+    member, plan, membership = (
+        create_pending_membership()
+    )
+
+    token = login(member.email)
+
+    response = client.post(
+        "/api/v1/payments/online/initialize",
+        headers=auth_headers(token),
+        json={
+            "membership_id": membership.id,
+        },
+    )
+
+    assert response.status_code == 201
+
+    body = response.json()
+
+    assert (
+        body["payment"]["membership_id"]
+        == membership.id
+    )
+    assert (
+        Decimal(body["payment"]["amount"])
+        == plan.price
+    )
+    assert body["payment"]["status"] == "pending"
+    assert body["payment"]["method"] == "online"
+    assert body["payment"]["paid_at"] is None
+    assert body["checkout_url"] is not None
