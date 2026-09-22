@@ -6,7 +6,7 @@
 # a class session with attendance history should not be deleted;
 # updated_at should change when the class is modified.
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 
 from app.models.gym_class import GymClass
 from app.repositories.gym_class_repository import (
@@ -17,6 +17,7 @@ from app.schemas.gym_class import (
     GymClassUpdateRequest,
 )
 
+from app.schemas.class_board import ClassBoardResponse
 
 class GymClassNotFoundError(Exception):
     pass
@@ -134,3 +135,69 @@ class GymClassService:
         self.repository.delete(
             gym_class
         )
+
+
+
+
+
+def get_class_board(
+    self,
+    class_id: int,
+) -> ClassBoardResponse:
+    gym_class = self.get_class(class_id)
+
+    checked_in = self.repository.count_checkins(
+        class_id
+    )
+
+    remaining = max(
+        gym_class.capacity - checked_in,
+        0,
+    )
+
+    return ClassBoardResponse(
+        class_id=gym_class.id,
+        name=gym_class.name,
+        starts_at=gym_class.starts_at,
+        capacity=gym_class.capacity,
+        checked_in=checked_in,
+        remaining=remaining,
+        full=checked_in >= gym_class.capacity,
+    )
+
+
+
+def get_class_board_for_date(
+    self,
+    target_date: date,
+) -> list[ClassBoardResponse]:
+    classes = self.repository.get_by_date(
+        target_date
+    )
+
+    board: list[ClassBoardResponse] = []
+
+    for gym_class in classes:
+        checked_in = self.repository.count_checkins(
+            gym_class.id
+        )
+
+        board.append(
+            ClassBoardResponse(
+                class_id=gym_class.id,
+                name=gym_class.name,
+                starts_at=gym_class.starts_at,
+                capacity=gym_class.capacity,
+                checked_in=checked_in,
+                remaining=max(
+                    gym_class.capacity - checked_in,
+                    0,
+                ),
+                full=(
+                    checked_in
+                    >= gym_class.capacity
+                ),
+            )
+        )
+
+    return board

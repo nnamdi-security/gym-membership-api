@@ -306,3 +306,43 @@ def test_admin_can_delete_unused_class():
     )
 
     assert response.status_code == 204
+
+
+
+
+def test_authenticated_user_can_view_class_board():
+    admin = create_user(
+        email="admin@example.com",
+        role=UserRole.ADMIN,
+    )
+
+    token = login(admin.email)
+
+    create_response = client.post(
+        "/api/v1/classes",
+        headers=auth_headers(token),
+        json={
+            "name": "Spin",
+            "capacity": 12,
+            "starts_at": (
+                datetime.now(timezone.utc)
+                + timedelta(days=1)
+            ).isoformat(),
+        },
+    )
+
+    class_id = create_response.json()["id"]
+
+    response = client.get(
+        f"/api/v1/classes/{class_id}/board",
+        headers=auth_headers(token),
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["capacity"] == 12
+    assert body["checked_in"] == 0
+    assert body["remaining"] == 12
+    assert body["full"] is False

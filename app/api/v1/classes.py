@@ -1,3 +1,6 @@
+from datetime import date
+from app.schemas.class_board import ClassBoardResponse
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 
@@ -178,3 +181,46 @@ def delete_class(
                 "and cannot be deleted"
             ),
         ) from None
+
+
+
+@router.get(
+    "/board/by-date/{target_date}",
+    response_model=list[ClassBoardResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Get class attendance board for a date",
+    dependencies=[CURRENT_USER_DEPENDENCY],
+)
+def get_class_board_for_date(
+    target_date: date,
+    service: GymClassService = GYM_CLASS_SERVICE_DEPENDENCY,
+):
+    return service.get_class_board_for_date(
+        target_date
+    )
+
+
+@router.get(
+    "/{class_id}/board",
+    response_model=ClassBoardResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get live class attendance board",
+    dependencies=[CURRENT_USER_DEPENDENCY],
+)
+def get_class_board(
+    class_id: int,
+    service: GymClassService = GYM_CLASS_SERVICE_DEPENDENCY,
+):
+    try:
+        return service.get_class_board(
+            class_id
+        )
+
+    except GymClassNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Class session not found",
+        ) from None
+
+
+

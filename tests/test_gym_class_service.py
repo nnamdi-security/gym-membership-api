@@ -267,3 +267,64 @@ def _validate_future_datetime(
 
     if starts_at <= datetime.now(timezone.utc):
         raise GymClassStartsInPastError
+
+    
+
+
+
+
+def test_get_class_board_returns_capacity_summary():
+    repository = FakeGymClassRepository()
+    service = GymClassService(repository)
+
+    gym_class = service.create_class(
+        GymClassCreateRequest(
+            name="Spin",
+            capacity=12,
+            starts_at=(
+                datetime.now(timezone.utc)
+                + timedelta(days=1)
+            ),
+        )
+    )
+
+    repository.checkin_counts[
+        gym_class.id
+    ] = 9
+
+    board = service.get_class_board(
+        gym_class.id
+    )
+
+    assert board.capacity == 12
+    assert board.checked_in == 9
+    assert board.remaining == 3
+    assert board.full is False
+
+
+
+def test_get_class_board_marks_full_class():
+    repository = FakeGymClassRepository()
+    service = GymClassService(repository)
+
+    gym_class = service.create_class(
+        GymClassCreateRequest(
+            name="Spin",
+            capacity=12,
+            starts_at=(
+                datetime.now(timezone.utc)
+                + timedelta(days=1)
+            ),
+        )
+    )
+
+    repository.checkin_counts[
+        gym_class.id
+    ] = 12
+
+    board = service.get_class_board(
+        gym_class.id
+    )
+
+    assert board.remaining == 0
+    assert board.full is True
