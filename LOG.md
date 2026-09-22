@@ -1,55 +1,743 @@
-## Day 5 — Payments, Membership Activation and Webhooks
+# FitPro Development Log
+
+Team: Emerald Wave  
+Project: FitPro — Gym Membership & Classes
+
+---
+
+## Day 1 — Project Design and ERD
 
 ### What we did
 
-Today we implemented FitPro's payment flow for both staff-recorded payments and online payments.
+We studied the FitPro project brief and broke the system into its main business entities.
 
-For staff payments, front-desk or admin users can record payment for a membership that is still in `PENDING_PAYMENT`. The amount is not supplied by the staff user; FitPro gets the correct amount from the membership plan. When the payment succeeds, the payment becomes `SUCCEEDED` and the membership becomes `ACTIVE`.
+We designed the initial ERD with the following PostgreSQL tables:
 
-We made payment recording and membership activation one database transaction so that we cannot end up with a successful payment while the membership remains pending.
+- users
+- plans
+- memberships
+- classes
+- checkins
+- payments
+- reminders
+- job_runs
+- processed_events
 
-We also implemented online payment initialization. FitPro creates a `PENDING` online payment, generates a unique reference, and returns checkout information without activating the membership.
+We identified the main relationships between users, plans, memberships, classes and check-ins.
 
-We integrated the instructor's mock payment provider using the `/api/v1/webhooks/payment` endpoint. The webhook uses HMAC-SHA256 verification through the `X-Signature` header.
+We also identified the important database constraints required by the brief:
 
-We added webhook idempotency using the `processed_events` table. Duplicate provider events return HTTP 200 without changing the payment or membership a second time.
+- `users.email` must be unique.
+- `checkins(class_id, member_id)` must be unique so one member cannot check into the same class twice.
+- `job_runs(job_name, run_date)` must be unique so the daily job can safely run more than once.
+- `processed_events.event_id` must be unique so the same webhook event cannot be processed twice.
+- memberships need an index on `(end_date, status)`.
+- classes need an index on `starts_at`.
 
-We also implemented handling for orphan webhook events, invalid signatures, mismatched amounts and currencies, and invalid webhook payloads.
+We discussed the difference between a user account and a membership, and why check-ins need their own table because members and classes have a many-to-many relationship.
+
+We prepared the ERD and the required handwritten design for instructor review.
+
+The instructor approved the handwritten design before we started coding.
 
 ### What broke / challenges
 
-The first time we ran the mock payment provider, every webhook returned HTTP 401. We discovered that the webhook secret used by the mock script did not match the `WEBHOOK_SECRET` inside the API container.
+There was no coding failure on Day 1, but the main challenge was understanding the difference between the business entities.
 
-After fixing the secret, valid requests passed signature verification.
+At first, concepts such as a member, membership, plan and class could easily have been combined into fewer tables, but doing that would have made the system harder to manage.
 
-The first valid event was then returned as an `orphan`. We learned that this was expected because we had not yet created an actual pending online payment with the reference being sent by the mock provider.
+We also had to think carefully about the hard problems before implementation:
 
-We also had some payment service and router code pasted into the wrong files. We reorganized the code so provider initialization and business rules remained in the service layer while FastAPI response handling stayed in the router.
+- making the scheduled daily job idempotent;
+- preventing class capacity from being exceeded when multiple members check in at the same time.
 
 ### What we learnt
 
-We learnt that a signed webhook must be verified against the exact raw request body. Parsing and rebuilding the JSON before verifying the signature can change the bytes and invalidate the HMAC.
+We learnt that an ERD is not just a diagram of tables. It should also reflect the rules the application must guarantee.
 
-We also understood the difference between a payment reference and a webhook event ID. The payment reference identifies the payment transaction, while the event ID identifies one provider notification.
+We learnt why important rules should be backed by database constraints instead of relying only on Python checks.
 
-We learnt why webhook processing must be idempotent because payment providers may retry the exact same event.
+We also learnt the difference between:
 
-We also learnt why payment success and membership activation must happen in one transaction: either both changes commit or both roll back.
+- one-to-many relationships;
+- many-to-many relationships;
+- join tables;
+- operational/idempotency tables such as `job_runs` and `processed_events`.
+
+We understood that PostgreSQL will be the source of truth, while Firestore will later hold read-oriented/live information such as class board counts.
 
 ### What is next
 
-Next we will move into the classes and check-in domain.
+Day 2 will set up the actual backend project:
 
-We need to create scheduled class sessions, implement capacity rules, and solve the concurrency problem where two members may try to take the final available class spot at the same time.
+- FastAPI application structure;
+- configuration;
+- Docker;
+- PostgreSQL;
+- Redis;
+- Alembic;
+- first migration;
+- pytest;
+- GitHub Actions CI.
 
 ### Who did what
 
 Michael:
-- [replace with the parts you actually handled]
+- [Fill in the parts you personally handled.]
 
 Partner:
-- [replace with the parts your partner actually handled]
+- [Fill in the parts your partner personally handled.]
 
 Shared:
-- Reviewed the payment flow and webhook behavior together.
-- Tested the mock payment provider behavior and discussed the idempotency rules.
+- Reviewed the ERD and project requirements together.
+- Discussed the system entities and relationships.
+
+---
+
+## Day 2 — Backend Foundation, Docker, Database and CI
+
+### What we did
+
+We created the FastAPI project structure using separate folders for:
+
+- API routers;
+- core configuration;
+- database setup;
+- models;
+- schemas;
+- repositories;
+- services;
+- tests.
+
+We configured environment-based settings using `pydantic-settings`.
+
+We added a FastAPI health endpoint and an initial pytest smoke test.
+
+We containerized the application with Docker and Docker Compose.
+
+The local development environment now includes three services:
+
+- FastAPI API;
+- PostgreSQL;
+- Redis.
+
+We configured Docker health checks so the API waits until PostgreSQL and Redis are actually ready.
+
+We added SQLModel database session handling and verified that the Python application could connect to PostgreSQL by executing `SELECT 1`.
+
+We configured Alembic for database migrations.
+
+We converted the approved ERD into SQLModel models for:
+
+- users;
+- plans;
+- memberships;
+- classes;
+- checkins;
+- payments;
+- reminders;
+- job_runs;
+- processed_events.
+
+We generated and applied the first Alembic migration.
+
+We added GitHub Actions CI so every push and pull request:
+
+- checks out the project;
+- installs Python;
+- installs dependencies;
+- starts PostgreSQL and Redis;
+- runs Alembic migrations;
+- runs pytest.
+
+### What broke / challenges
+
+The first Alembic setup had several issues.
+
+`alembic.ini` was empty, so Alembic returned:
+
+`No 'script location' key found in configuration`.
+
+After fixing that, Alembic still tried to use the placeholder SQLAlchemy URL:
+
+`driver://user:pass@localhost/dbname`
+
+which caused:
+
+`Can't load plugin: sqlalchemy.dialects:driver`.
+
+We fixed `alembic/env.py` so it reads the real database URL from the application settings.
+
+We also found an enum downgrade problem.
+
+After downgrading the first migration, PostgreSQL removed the tables but left enum types such as:
+
+- `userrole`;
+- `membershipstatus`;
+- `reminderkind`.
+
+The next upgrade failed with:
+
+`type "userrole" already exists`.
+
+We corrected the migration downgrade so it explicitly removes PostgreSQL enum types.
+
+### What we learnt
+
+We learnt the difference between:
+
+- Docker image;
+- Docker container;
+- Docker Compose service;
+- Docker volume;
+- Docker health check.
+
+We learnt why Docker services communicate using service names such as `postgres` and `redis` instead of `localhost`.
+
+We learnt that the API application and Alembic should use the same environment-based database configuration.
+
+We learnt that Alembic autogenerate must always be reviewed before execution.
+
+We also learnt that PostgreSQL enum types are independent schema objects and may need to be explicitly removed during downgrade.
+
+We learnt why tests need a dedicated `fitpro_test` database rather than using the development database.
+
+### What is next
+
+Day 3 will implement authentication and authorization:
+
+- password hashing;
+- JWT access tokens;
+- request/response schemas;
+- user repository;
+- authentication service;
+- register/login endpoints;
+- current-user dependency;
+- role-based authorization.
+
+### Who did what
+
+Michael:
+- [Fill in your actual work.]
+
+Partner:
+- [Fill in your partner's actual work.]
+
+Shared:
+- Reviewed Docker and database setup.
+- Reviewed migration behavior and the CI workflow.
+
+---
+
+## Day 3 — Authentication and Role-Based Authorization
+
+### What we did
+
+We implemented password hashing using Argon2 through `pwdlib`.
+
+Plain-text passwords are never stored in PostgreSQL.
+
+We added JWT access token creation and validation.
+
+JWT tokens contain:
+
+- `sub` for the user ID;
+- `exp` for token expiry.
+
+We created authentication request and response schemas for:
+
+- registration;
+- login;
+- token responses;
+- safe user responses.
+
+The public registration schema deliberately does not accept a role, so a user cannot register themselves as an administrator.
+
+We implemented the `UserRepository` with:
+
+- `get_by_email`;
+- `get_by_id`;
+- `create`.
+
+We added an `AuthService` that handles:
+
+- duplicate email checks;
+- password hashing;
+- login authentication;
+- JWT generation.
+
+We created API endpoints:
+
+- `POST /api/v1/auth/register`;
+- `POST /api/v1/auth/login`;
+- `GET /api/v1/auth/me`.
+
+We implemented `get_current_user`, which:
+
+- reads the Bearer token;
+- validates the JWT;
+- extracts the user ID;
+- loads the current user from PostgreSQL.
+
+We implemented reusable role-based authorization with:
+
+`require_roles(...)`.
+
+Roles currently are:
+
+- MEMBER;
+- FRONT_DESK;
+- ADMIN.
+
+We tested 401 and 403 behavior.
+
+We also hardened authentication against:
+
+- duplicate registrations;
+- wrong passwords;
+- invalid emails;
+- expired JWTs;
+- malformed JWTs;
+- JWTs for deleted users;
+- members trying staff-only operations.
+
+### What broke / challenges
+
+One issue was deciding where each responsibility should live.
+
+It would have been easy to put password hashing, database queries and HTTP errors directly inside FastAPI routes.
+
+Instead, we separated:
+
+- router responsibilities;
+- service responsibilities;
+- repository responsibilities.
+
+We also discussed the difference between service errors and HTTP errors.
+
+The service raises application errors such as `InvalidCredentialsError`, while the router converts them into HTTP responses.
+
+Another challenge was making sure role-based authorization did not depend only on information stored inside the JWT.
+
+We decided to load the current user from PostgreSQL so role changes take effect immediately.
+
+### What we learnt
+
+We learnt the difference between authentication and authorization.
+
+Authentication answers:
+
+`Who are you?`
+
+Authorization answers:
+
+`Are you allowed to do this?`
+
+We learnt the HTTP distinction:
+
+- 401 means authentication failed;
+- 403 means authentication succeeded but permission is denied.
+
+We learnt that JWT payloads are signed, not encrypted, so sensitive information should not be stored in them.
+
+We also learnt why response schemas are separate from SQLModel database models: database fields such as `password_hash` must never be accidentally exposed through the API.
+
+### What is next
+
+Day 4 will implement the gym membership business domain:
+
+- membership plans;
+- memberships;
+- membership lifecycle;
+- staff/member access rules;
+- freezing and unfreezing;
+- preparation for membership expiry and reminder jobs.
+
+### Who did what
+
+Michael:
+- [Fill in your actual work.]
+
+Partner:
+- [Fill in your partner's actual work.]
+
+Shared:
+- Reviewed authentication flow and role behavior.
+- Tested login and protected routes.
+
+---
+
+## Day 4 — Membership Plans and Membership Lifecycle
+
+### What we did
+
+We implemented membership-plan schemas, repository, service and API endpoints.
+
+Plan endpoints include:
+
+- list plans;
+- view a plan;
+- create a plan;
+- update a plan;
+- delete a plan.
+
+Only ADMIN users can modify plans.
+
+Members, front-desk staff and admins can view plans.
+
+We added a business rule preventing a plan from being deleted after a membership references it.
+
+We then discussed the real-world gym membership flow in more detail and refined the project design.
+
+We clarified that:
+
+`UserRole.MEMBER`
+
+means the user is a gym customer account, while:
+
+`MembershipStatus.ACTIVE`
+
+means the customer currently has paid gym entitlement.
+
+We changed the membership lifecycle from the original simple `PENDING` state to:
+
+- `PENDING_PAYMENT`;
+- `ACTIVE`;
+- `FROZEN`;
+- `EXPIRED`;
+- `CANCELLED`.
+
+A membership awaiting payment has:
+
+- `start_date = NULL`;
+- `end_date = NULL`.
+
+Payment confirmation later sets those dates and activates the membership.
+
+We added `frozen_on` so FitPro can calculate how long a membership was paused.
+
+We created a second Alembic migration for the refined membership lifecycle.
+
+We implemented:
+
+- membership schemas;
+- membership repository;
+- membership service;
+- member membership API;
+- staff membership API;
+- freeze/unfreeze behavior.
+
+Members can create a pending subscription for themselves.
+
+Front-desk/admin users can create a pending subscription for another member.
+
+Members can only view their own membership history.
+
+Staff/admin users can inspect membership records.
+
+We defined a membership end date as an exclusive expiry date.
+
+For example:
+
+- start date: 21 September;
+- duration: 30 days;
+- end date: 21 October;
+- membership is valid through 20 October.
+
+We implemented freezing so only ACTIVE memberships can be frozen.
+
+Unfreezing extends the end date by the number of frozen days.
+
+We also added repository queries needed for the future daily job:
+
+- `get_active_expiring_on(target_date)`;
+- `get_active_expired_by(as_of_date)`.
+
+### What broke / challenges
+
+The first attempt at generating the membership-lifecycle migration was dangerous.
+
+Alembic generated a migration that tried to drop almost every FitPro table.
+
+We discovered that the cause was replacing `SQLModel.metadata` in `app/db/base.py`.
+
+Alembic was comparing PostgreSQL's nine tables against an empty metadata object and concluded that all tables should be deleted.
+
+We fixed the metadata setup and regenerated the migration.
+
+The corrected migration only changed the memberships table.
+
+Alembic did not automatically handle the PostgreSQL enum change, so we manually wrote the enum migration from:
+
+`PENDING`
+
+to:
+
+`PENDING_PAYMENT`
+
+and added:
+
+`CANCELLED`.
+
+We tested upgrade, downgrade and re-upgrade successfully.
+
+Another challenge was deciding exactly what a gym class represents.
+
+We clarified that each row in `classes` should represent one scheduled class session, such as:
+
+`Spin — 21 Sep — 6 PM`
+
+rather than a permanent generic class that resets every day.
+
+### What we learnt
+
+We learnt that a user account and an active membership are separate concepts.
+
+Registering gives a user an account, while successful payment grants active gym entitlement.
+
+We learnt that generic status-update APIs can be dangerous.
+
+Instead of allowing clients to arbitrarily change membership status, important transitions such as:
+
+- activation;
+- freeze;
+- unfreeze;
+- expiry
+
+should happen through explicit business operations.
+
+We learnt that Alembic autogenerate is only a comparison assistant and generated migrations must always be reviewed.
+
+We also learnt why an expiry query should use:
+
+`end_date <= today`
+
+instead of only:
+
+`end_date == today`.
+
+If the daily job misses a day, overdue memberships must still be found on the next run.
+
+### What is next
+
+Day 5 will implement payments and membership activation:
+
+- staff-recorded payments;
+- online-payment initialization;
+- payment references;
+- payment status lifecycle;
+- payment-provider webhooks;
+- webhook signatures;
+- idempotent event processing.
+
+### Who did what
+
+Michael:
+- [Fill in your actual work.]
+
+Partner:
+- [Fill in your partner's actual work.]
+
+Shared:
+- Reviewed the gym membership business flow.
+- Discussed class-session behavior and membership lifecycle rules.
+
+---
+
+## Day 5 — Payments, Membership Activation and Webhooks
+
+### What we did
+
+We refined the original payment model so it can support both offline and online payments.
+
+Payments now contain:
+
+- membership ID;
+- amount;
+- status;
+- method;
+- unique reference;
+- provider;
+- recorded-by user when applicable;
+- recorded timestamp;
+- paid timestamp.
+
+Payment statuses are:
+
+- PENDING;
+- SUCCEEDED;
+- FAILED.
+
+Payment methods include:
+
+- CASH;
+- TRANSFER;
+- CARD;
+- ONLINE.
+
+We made `recorded_by` nullable because an online payment confirmed by a payment provider is not recorded manually by a FitPro employee.
+
+We added a third Alembic migration for the refined payment lifecycle.
+
+We implemented the PaymentRepository with:
+
+- lookup by ID;
+- lookup by reference;
+- membership payment history;
+- create;
+- update;
+- pending/successful payment lookups.
+
+We implemented transactional staff payment processing.
+
+For an offline payment:
+
+- the membership must be `PENDING_PAYMENT`;
+- FitPro derives the amount from the selected membership plan;
+- staff cannot manually submit the amount;
+- staff cannot manually use the ONLINE payment method;
+- FitPro generates the payment reference;
+- payment becomes `SUCCEEDED`;
+- membership becomes `ACTIVE`;
+- payment creation and membership activation commit in one PostgreSQL transaction.
+
+We then implemented online-payment initialization.
+
+Online initialization:
+
+- creates a `PENDING` payment;
+- uses the plan price;
+- generates a unique FitPro reference;
+- stores the provider;
+- leaves `recorded_by` empty;
+- does not activate the membership.
+
+We introduced a payment-provider abstraction and a fake provider for development.
+
+The instructor then provided a mock payment-provider script.
+
+The script sends signed webhook requests to:
+
+`POST /api/v1/webhooks/payment`.
+
+We implemented:
+
+- webhook payload schema;
+- raw-body HMAC-SHA256 signature validation;
+- processed-event repository;
+- webhook service;
+- webhook API endpoint;
+- payment lookup by reference;
+- payment-row locking using `FOR UPDATE`;
+- webhook event idempotency;
+- orphan webhook handling;
+- amount verification;
+- currency verification.
+
+The webhook success operation updates:
+
+- Payment → SUCCEEDED;
+- Membership → ACTIVE;
+- ProcessedEvent → inserted;
+
+inside one transaction.
+
+Duplicate webhook events return HTTP 200 without changing the payment or membership a second time.
+
+Unknown references return HTTP 200 and are recorded as orphan events.
+
+Bad signatures return HTTP 401.
+
+### What broke / challenges
+
+The first time we ran the instructor's mock payment provider, every request returned:
+
+`401 Invalid webhook signature`.
+
+We discovered that the `WEBHOOK_SECRET` being used by the API container did not match the secret passed to the mock provider script.
+
+After making the secrets match, signature verification worked.
+
+The next mock-provider run returned:
+
+- valid event → 200 orphan;
+- duplicate → 200 duplicate;
+- wrong signature → 401;
+- unknown reference → 200 orphan.
+
+The first event was still an orphan because no real pending online payment with that reference existed yet.
+
+We decided to create the real business records later for the final end-to-end provider test.
+
+We also accidentally pasted some payment-router code into `payment_service.py`.
+
+We corrected the file responsibilities so:
+
+- provider/business logic remains in services;
+- HTTP response construction remains in routers.
+
+We also cleaned duplicated imports and incorrect repository imports in `payments.py`.
+
+### What we learnt
+
+We learnt that webhook signatures must be calculated from the exact raw request bytes.
+
+Parsing JSON and reconstructing it before checking the HMAC may alter the byte sequence and invalidate the signature.
+
+We learnt the difference between:
+
+`Payment.reference`
+
+and:
+
+`ProcessedEvent.event_id`.
+
+The payment reference identifies the payment transaction.
+
+The event ID identifies one provider notification.
+
+A provider may retry the same event, which is why `processed_events.event_id` is unique.
+
+We learnt why webhook endpoints do not use JWT authentication.
+
+Members and staff authenticate with JWTs, while an external payment provider authenticates using its HMAC signature.
+
+We also learnt why financial state transitions must be atomic.
+
+A successful payment and membership activation must either both commit or both roll back.
+
+We learnt that the provider sends amounts in the smallest currency unit, so FitPro must compare:
+
+`payment.amount × 100`
+
+against the provider's kobo value without converting money through Python floats.
+
+### What is next
+
+Day 6 will implement scheduled gym classes and class check-ins.
+
+The main rules will include:
+
+- each class row represents one scheduled session;
+- only members with ACTIVE membership can check in;
+- duplicate check-in must return 409;
+- a full class must return 409;
+- capacity must never be exceeded even if two members attempt the final place at the same time;
+- the class-count query will later feed the live board/SSE feature.
+
+After classes/check-ins, we still need to implement the daily membership job and its idempotency requirement.
+
+### Who did what
+
+Nnamdi:
+- [Fill in your actual work.]
+
+Stephanie:
+- [Fill in your partner's actual work.]
+
+Shared:
+- Reviewed payment and webhook design.
+- Tested provider signature and duplicate behavior.
+- Discussed payment-provider retry and idempotency rules.
+
+---
