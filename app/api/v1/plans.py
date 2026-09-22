@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 
 from app.api.dependencies.auth import get_current_user, require_roles
-from app.db.session import get_database
+from app.db.session import get_session
 from app.models.user import UserRole
 from app.repositories.plan_repository import PlanRepository
 from app.schemas.plan import (
@@ -21,7 +21,7 @@ router = APIRouter(
     tags=["Membership Plans"],
 )
 
-SESSION_DEPENDENCY = Depends(get_database)
+SESSION_DEPENDENCY = Depends(get_session)
 
 
 def get_plan_service(
@@ -52,7 +52,7 @@ def list_plans(service: PlanService = PLAN_SERVICE_DEPENDENCY):
     response_model=PlanResponse,
     status_code=status.HTTP_200_OK,
     summary="Get a membership plan",
-    dependencies=[CURRENT_USER_DEPENDENCY]
+    dependencies=[CURRENT_USER_DEPENDENCY],
 )
 def get_plan(plan_id: int, service: PlanService = PLAN_SERVICE_DEPENDENCY):
     try:

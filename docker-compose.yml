@@ -6,6 +6,8 @@ services:
 
     container_name: fitpro-api
 
+    user: "${UID:-1000}:${GID:-1000}"
+
     command:
       uvicorn app.main:app
       --host 0.0.0.0
