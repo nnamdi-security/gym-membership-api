@@ -260,3 +260,185 @@ with Session(engine) as session:
     ).all()
 
     assert len(events) == 1
+
+
+
+
+def test_webhook_rejects_wrong_amount():
+    _, _ = create_pending_online_payment()
+
+    body = {
+        "event_id": "evt_wrong_amount",
+        "type": "payment.succeeded",
+        "reference": "FITPRO-WEBHOOK-001",
+        "amount": 100,
+        "currency": "NGN",
+        "paid_at": "2026-09-22T10:00:00Z",
+    }
+
+    raw_body = json.dumps(
+        body,
+        separators=(",", ":"),
+    ).encode()
+
+    response = client.post(
+        "/api/v1/webhooks/payment",
+        content=raw_body,
+        headers={
+            "Content-Type": "application/json",
+            "X-Signature": sign(raw_body),
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "detail": "Webhook payment data does not match"
+    }
+
+
+
+def test_webhook_rejects_wrong_currency():
+    create_pending_online_payment()
+
+    body = {
+        "event_id": "evt_wrong_currency",
+        "type": "payment.succeeded",
+        "reference": "FITPRO-WEBHOOK-001",
+        "amount": 1500000,
+        "currency": "USD",
+        "paid_at": "2026-09-22T10:00:00Z",
+    }
+
+    raw_body = json.dumps(
+        body,
+        separators=(",", ":"),
+    ).encode()
+
+    response = client.post(
+        "/api/v1/webhooks/payment",
+        content=raw_body,
+        headers={
+            "Content-Type": "application/json",
+            "X-Signature": sign(raw_body),
+        },
+    )
+
+    assert response.status_code == 400
+
+
+with Session(engine) as session:
+    statement = select(ProcessedEvent).where(
+        ProcessedEvent.event_id == "evt_wrong_amount"
+    )
+
+    event = session.exec(statement).first()
+
+    assert event is None
+
+
+
+
+with Session(engine) as session:
+    events = session.exec(
+        select(ProcessedEvent).where(
+            ProcessedEvent.event_id == "evt_valid_001"
+        )
+    ).all()
+
+    assert len(events) == 1
+
+
+with Session(engine) as session:
+    membership = session.get(
+        Membership,
+        membership_id,
+    )
+
+    first_start_date = membership.start_date
+    first_end_date = membership.end_date
+
+
+with Session(engine) as session:
+    membership = session.get(
+        Membership,
+        membership_id,
+    )
+
+    assert membership.start_date == first_start_date
+    assert membership.end_date == first_end_date
+
+
+
+
+def test_unknown_webhook_event_type_is_ignored():
+    body = {
+        "event_id": "evt_other_type",
+        "type": "payment.processing",
+        "reference": "ANYTHING",
+        "amount": 1500000,
+        "currency": "NGN",
+        "paid_at": "2026-09-22T10:00:00Z",
+    }
+
+    raw_body = json.dumps(
+        body,
+        separators=(",", ":"),
+    ).encode()
+
+    response = client.post(
+        "/api/v1/webhooks/payment",
+        content=raw_body,
+        headers={
+            "Content-Type": "application/json",
+            "X-Signature": sign(raw_body),
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "ignored"
+
+
+
+
+def test_malformed_webhook_payload_returns_422():
+    raw_body = b'{"event_id":'
+
+    response = client.post(
+        "/api/v1/webhooks/payment",
+        content=raw_body,
+        headers={
+            "Content-Type": "application/json",
+            "X-Signature": sign(raw_body),
+        },
+    )
+
+    assert response.status_code == 422
+
+
+
+
+
+def test_webhook_missing_reference_returns_422():
+    body = {
+        "event_id": "evt_invalid_payload",
+        "type": "payment.succeeded",
+        "amount": 1500000,
+        "currency": "NGN",
+        "paid_at": "2026-09-22T10:00:00Z",
+    }
+
+    raw_body = json.dumps(
+        body,
+        separators=(",", ":"),
+    ).encode()
+
+    response = client.post(
+        "/api/v1/webhooks/payment",
+        content=raw_body,
+        headers={
+            "Content-Type": "application/json",
+            "X-Signature": sign(raw_body),
+        },
+    )
+
+    assert response.status_code == 422
