@@ -3,12 +3,18 @@ from sqlmodel import Session
 
 from app.api.dependencies.auth import require_roles
 from app.db.session import get_session
-from app.models.payment import PaymentMethod
 from app.models.user import User, UserRole
 from app.repositories.membership_repository import MembershipRepository
 from app.repositories.payment_repository import PaymentRepository
 from app.repositories.plan_repository import PlanRepository
-from app.schemas.payment import PaymentResponse, StaffPaymentRequest
+from app.repositories.user import UserRepository
+from app.schemas.payment import (
+    OnlinePaymentInitializeRequest,
+    OnlinePaymentInitializeResponse,
+    PaymentResponse,
+    StaffPaymentRequest,
+)
+from app.services.fake_payment_provider import FakePaymentProvider
 from app.services.payment_service import (
     InvalidStaffPaymentMethodError,
     MembershipAlreadyPaidError,
@@ -16,23 +22,10 @@ from app.services.payment_service import (
     MembershipNotFoundError,
     PaymentNotFoundError,
     PaymentService,
+    PendingOnlinePaymentExistsError,
     PlanNotFoundError,
-    PendingOnlinePaymentExistsError
 )
 
-from app.api.dependencies.auth import (
-    get_current_user,
-    require_roles,
-)
-from app.repositories.user import UserRepository
-from app.schemas.payment import (
-    OnlinePaymentInitializeRequest,
-    PaymentResponse,
-    StaffPaymentRequest,
-)
-from app.services.fake_payment_provider import (
-    FakePaymentProvider,
-)
 
 router = APIRouter(
     prefix="/payments",
@@ -53,7 +46,7 @@ MEMBER_USER_DEPENDENCY = Depends(
     require_roles(UserRole.MEMBER)
 )
 
-# Service dependency
+
 def get_payment_service(
     session: Session = SESSION_DEPENDENCY,
 ) -> PaymentService:
@@ -78,9 +71,6 @@ PAYMENT_SERVICE_DEPENDENCY = Depends(
 )
 
 
-
-
-# Staff payment endpoint
 @router.post(
     "/staff",
     response_model=PaymentResponse,
@@ -106,25 +96,25 @@ def record_staff_payment(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Membership not found",
-        )
+        ) from None
 
     except PlanNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Membership plan not found",
-        )
+        ) from None
 
     except MembershipNotAwaitingPaymentError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Membership is not awaiting payment",
-        )
+        ) from None
 
     except MembershipAlreadyPaidError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Membership has already been paid",
-        )
+        ) from None
 
     except InvalidStaffPaymentMethodError:
         raise HTTPException(
@@ -133,10 +123,9 @@ def record_staff_payment(
                 "ONLINE is not a valid staff-recorded "
                 "payment method"
             ),
-        )
+        ) from None
 
 
-# Membership payment history
 @router.get(
     "/membership/{membership_id}",
     response_model=list[PaymentResponse],
@@ -157,12 +146,12 @@ def get_membership_payments(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Membership not found",
-        )
+        ) from None
 
 
 @router.post(
     "/online/initialize",
-    response_model=PaymentResponse,
+    response_model=OnlinePaymentInitializeResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Initialize an online membership payment",
     description=(
@@ -176,22 +165,29 @@ def initialize_online_payment(
     service: PaymentService = PAYMENT_SERVICE_DEPENDENCY,
 ):
     try:
-        return service.initialize_online_payment(
+        result = service.initialize_online_payment(
             membership_id=data.membership_id,
             member_id=current_user.id,
+        )
+
+        return OnlinePaymentInitializeResponse(
+            payment=PaymentResponse.model_validate(
+                result.payment
+            ),
+            checkout_url=result.checkout_url,
         )
 
     except MembershipNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Membership not found",
-        )
+        ) from None
 
     except MembershipNotAwaitingPaymentError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Membership is not awaiting payment",
-        )
+        ) from None
 
     except PendingOnlinePaymentExistsError:
         raise HTTPException(
@@ -200,15 +196,15 @@ def initialize_online_payment(
                 "A pending online payment already exists "
                 "for this membership"
             ),
-        )
+        ) from None
 
     except PlanNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Membership plan not found",
-        )
+        ) from None
 
-# Staff/admin payment lookup/inspect
+
 @router.get(
     "/{payment_id}",
     response_model=PaymentResponse,
@@ -227,8 +223,4 @@ def get_payment(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Payment not found",
-        )
-
-
-
-
+        ) from None
