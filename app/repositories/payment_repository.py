@@ -1,0 +1,73 @@
+# The repository's job is to persist and retrieve payment records. It should not decide whether a payment is valid, whether a membership may be activated, or whether an online callback is trustworthy. Those are service-layer concerns.
+
+from sqlmodel import Session, select
+
+from app.models.payment import Payment
+
+
+class PaymentRepository:
+    def __init__(self, session: Session):
+        self.session = session
+
+    def get_by_id(
+        self,
+        payment_id: int,
+    ) -> Payment | None:
+        return self.session.get(
+            Payment,
+            payment_id,
+        )
+
+    def get_by_reference(
+        #The payment reference will become one of the most important lookup keys in the whole payment flow. It is how an external provider event gets tied back to our internal transaction.
+        self,
+        reference: str,
+    ) -> Payment | None:
+        statement = select(Payment).where(
+            Payment.reference == reference
+        )
+
+        return self.session.exec(
+            statement
+        ).first()
+
+    def get_for_membership(
+        self,
+        membership_id: int,
+    ) -> list[Payment]:
+        statement = (
+            select(Payment)
+            .where(
+                Payment.membership_id
+                == membership_id
+            )
+            .order_by(
+                Payment.id.desc()
+            )
+        )
+
+        return list(
+            self.session.exec(
+                statement
+            ).all()
+        )
+
+    def create(
+        self,
+        payment: Payment,
+    ) -> Payment:
+        self.session.add(payment)
+        self.session.commit()
+        self.session.refresh(payment)
+
+        return payment
+
+    def update(
+        self,
+        payment: Payment,
+    ) -> Payment:
+        self.session.add(payment)
+        self.session.commit()
+        self.session.refresh(payment)
+
+        return payment
