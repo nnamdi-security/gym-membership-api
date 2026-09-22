@@ -174,6 +174,32 @@ class CheckinService:
 
 
 
+    def get_member_checkins(
+        self,
+        member_id: int,
+    ) -> list[Checkin]:
+        return self.checkin_repository.get_for_member(
+            member_id
+        )
+
+
+    def get_class_checkins(
+        self,
+        class_id: int,
+    ) -> list[Checkin]:
+        gym_class = self.gym_class_repository.get_by_id(
+            class_id
+        )
+
+        if gym_class is None:
+            raise GymClassNotFoundError
+
+        return self.checkin_repository.get_for_class(
+            class_id
+        )
+
+
+
 
 
 
