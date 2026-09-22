@@ -122,3 +122,19 @@ class PaymentRepository:
         )
 
         return self.session.exec(statement).first()
+
+
+    # Lock payment lookup
+    def get_by_reference_for_update(
+        self,
+        reference: str,
+    ) -> Payment | None:
+        statement = (
+            select(Payment)
+            .where(
+                Payment.reference == reference
+            )
+            .with_for_update()
+        )
+
+        return self.session.exec(statement).first()

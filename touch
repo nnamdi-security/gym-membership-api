@@ -1,0 +1,57 @@
+app/api/v1/webhooks.py
+
+import json
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import ValidationError
+from sqlmodel import Session
+
+from app.core.webhook_security import (
+    verify_webhook_signature,
+)
+from app.db.session import get_session
+from app.repositories.membership_repository import MembershipRepository
+from app.repositories.payment_repository import PaymentRepository
+from app.repositories.plan_repository import PlanRepository
+from app.repositories.processed_event_repository import (
+    ProcessedEventRepository,
+)
+from app.schemas.webhook import PaymentWebhookEvent
+from app.services.webhook_service import (
+    WebhookPaymentMismatchError,
+    WebhookService,
+)
+
+
+router = APIRouter(
+    prefix="/webhooks",
+    tags=["Webhooks"],
+)
+
+
+SESSION_DEPENDENCY = Depends(get_session)
+
+
+def get_webhook_service(
+    session: Session = SESSION_DEPENDENCY,
+) -> WebhookService:
+    return WebhookService(
+        session=session,
+        payment_repository=PaymentRepository(
+            session
+        ),
+        membership_repository=MembershipRepository(
+            session
+        ),
+        plan_repository=PlanRepository(
+            session
+        ),
+        processed_event_repository=ProcessedEventRepository(
+            session
+        ),
+    )
+
+
+WEBHOOK_SERVICE_DEPENDENCY = Depends(
+    get_webhook_service
+)
