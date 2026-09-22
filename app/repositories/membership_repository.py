@@ -132,3 +132,13 @@ class MembershipRepository:
             )
 
             return list(self.session.exec(statement).all())
+
+
+
+    def add(
+        self,
+        membership: Membership,
+    ) -> Membership:
+        self.session.add(membership)
+
+        return membership

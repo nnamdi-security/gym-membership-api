@@ -4,6 +4,7 @@ from sqlmodel import Session, select
 
 from app.models.payment import Payment
 
+from app.models.payment import Payment, PaymentStatus
 
 class PaymentRepository:
     def __init__(self, session: Session):
@@ -69,5 +70,31 @@ class PaymentRepository:
         self.session.add(payment)
         self.session.commit()
         self.session.refresh(payment)
+
+        return payment
+    
+
+    def get_succeeded_for_membership(
+        self,
+        membership_id: int,
+    ) -> Payment | None:
+        statement = (
+            select(Payment)
+            .where(
+                Payment.membership_id == membership_id,
+                Payment.status == PaymentStatus.SUCCEEDED,
+            )
+            .order_by(Payment.id.desc())
+        )
+
+        return self.session.exec(statement).first()
+
+
+    # Non-committing repository methods which ensure that payment success and membership activation succeed or fail together.
+    def add(
+        self,
+        payment: Payment,
+    ) -> Payment:
+        self.session.add(payment)
 
         return payment
