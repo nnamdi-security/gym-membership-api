@@ -7,6 +7,8 @@ from app.api.v1.plans import router as plans_router
 from app.api.v1.webhooks import router as webhooks_router
 from app.db.session import check_database_connection
 from app.api.v1.payments import router as payments_router
+from app.api.v1.classes import router as classes_router
+
 
 api_router = APIRouter()
 
@@ -16,6 +18,7 @@ api_router.include_router(plans_router)
 api_router.include_router(webhooks_router)
 api_router.include_router(memberships_router)
 api_router.include_router(payments_router)
+api_router.include_router(classes_router)
 
 
 @api_router.get("/health", tags=["System"], summary="Check API health")
