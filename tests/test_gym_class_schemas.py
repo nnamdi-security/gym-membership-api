@@ -56,3 +56,5 @@ def test_class_update_allows_partial_changes():
     assert data.name is None
     assert data.capacity == 15
     assert data.starts_at is None
+
+

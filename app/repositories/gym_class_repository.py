@@ -125,3 +125,20 @@ class GymClassRepository:
             gym_class
         )
         self.session.commit()
+
+
+    def get_by_id_for_update(
+        self,
+        class_id: int,
+    ) -> GymClass | None:
+        statement = (
+            select(GymClass)
+            .where(
+                GymClass.id == class_id
+            )
+            .with_for_update()
+        )
+
+        return self.session.exec(
+            statement
+        ).first()

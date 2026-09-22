@@ -336,3 +336,31 @@ def test_delete_class(
     assert repository.get_by_id(
         class_id
     ) is None
+
+
+
+
+def test_get_by_id_for_update_returns_class(
+    db_session,
+):
+    repository = GymClassRepository(
+        db_session
+    )
+
+    gym_class = repository.create(
+        GymClass(
+            name="Spin",
+            capacity=12,
+            starts_at=(
+                datetime.now(timezone.utc)
+                + timedelta(days=1)
+            ),
+        )
+    )
+
+    found = repository.get_by_id_for_update(
+        gym_class.id
+    )
+
+    assert found is not None
+    assert found.id == gym_class.id
