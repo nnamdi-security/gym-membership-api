@@ -88,7 +88,19 @@ _To be written in our own words after implementing the daily job._
 
 ## Why This Design
 
-_To be expanded throughout the project._
+### Class Capacity Safety
+
+FitPro does not check the class count and insert a check-in as two independent operations.
+
+The Check-in Service starts a transaction and locks the target class row using `SELECT ... FOR UPDATE`.
+
+Only after acquiring that lock does FitPro count the existing check-ins.
+
+If capacity is still available, the new check-in is inserted and the transaction commits.
+
+If another request is waiting for the same class, it only continues after the first transaction releases the lock. It then recounts attendance and rejects the check-in if the class is now full.
+
+This prevents a class with capacity 12 from ever ending up with 13 valid check-ins because of simultaneous requests.._
 
 ## Flowcharts
 
