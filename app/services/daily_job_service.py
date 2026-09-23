@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import date, timedelta
 
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
 
 from app.models.job_run import JobRun
@@ -106,7 +106,7 @@ class DailyJobService:
 
             self.session.commit()
 
-        except SQLAlchemyError:
+        except Exception:
             self.session.rollback()
             raise
 
