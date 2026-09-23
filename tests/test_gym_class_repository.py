@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, timedelta
 
 from app.models.gym_class import GymClass
 from app.repositories.gym_class_repository import (
