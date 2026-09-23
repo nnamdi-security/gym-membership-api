@@ -878,3 +878,118 @@ Shared:
 - Reviewed the class-capacity race condition.
 - Discussed the transaction and locking strategy.
 - Tested class and check-in behavior.
+
+
+
+
+
+
+## Day 7 — Daily Job and Idempotency
+
+### What we did
+
+Today we implemented FitPro's daily membership-maintenance job.
+
+The job performs two main business operations:
+
+- expire ACTIVE memberships whose `end_date` is today or earlier;
+- create one renewal reminder for ACTIVE memberships expiring exactly seven days later.
+
+We implemented repositories for `job_runs` and `reminders`.
+
+The daily job uses the existing unique constraint on:
+
+`job_runs(job_name, run_date)`
+
+to make the job idempotent.
+
+Instead of first checking whether today's job has already run, the
+service tries to insert today's job-run row and immediately calls
+`flush()`.
+
+PostgreSQL therefore decides which concurrent execution owns that day's
+job before any membership maintenance work begins.
+
+The winning execution expires memberships, creates missing reminders
+and commits everything together.
+
+The losing execution receives the uniqueness conflict and returns
+`already_run` without repeating the work.
+
+We also added a secure scheduler endpoint:
+
+`POST /api/v1/jobs/daily`
+
+The endpoint uses the `X-API-Key` header rather than user JWT
+authentication.
+
+We created real PostgreSQL tests for:
+
+- running the job twice sequentially;
+- two concurrent executions;
+- exactly one `job_runs` row;
+- exactly one expiry reminder;
+- membership expiry;
+- full rollback when the job fails;
+- frozen-membership behavior;
+- missed-job recovery;
+- the exact seven-day reminder boundary.
+
+### What broke / challenges
+
+The main challenge was understanding why a normal existence check is
+not sufficient for idempotency.
+
+Two requests can both check for a job-run row before either one inserts
+it.
+
+We solved this by using an insert-first strategy with the database
+unique constraint and `flush()`.
+
+We also had to make sure the job-run marker was not committed before
+the actual maintenance work.
+
+If the marker were committed first and the job later failed, future
+retries would incorrectly believe the job had already completed.
+
+### What we learnt
+
+We learnt the difference between `flush()` and `commit()`.
+
+`flush()` sends pending SQL to PostgreSQL so constraints can be checked,
+but the transaction is still open.
+
+`commit()` permanently completes the transaction.
+
+This allowed us to claim the day's unique job execution before doing the
+work while still rolling back the claim if anything failed.
+
+We also learnt that idempotency should be enforced at more than one
+level.
+
+`job_runs` protects the whole daily execution, while the unique reminder
+constraint separately protects reminder records.
+
+### What is next
+
+Next we will continue with the remaining infrastructure requirements:
+
+- Redis;
+- Firestore class-board projection;
+- activity feed;
+- SSE/live updates;
+- final documentation;
+- presentation preparation.
+
+### Who did what
+
+Michael:
+- [Fill in your actual work.]
+
+Partner:
+- [Fill in your partner's actual work.]
+
+Shared:
+- Reviewed the daily-job race condition.
+- Discussed the insert-first idempotency strategy.
+- Reviewed the transaction and rollback behavior.
