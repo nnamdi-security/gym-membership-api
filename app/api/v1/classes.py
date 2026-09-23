@@ -21,11 +21,20 @@ from app.services.gym_class_service import (
     GymClassStartsInPastError,
 )
 
+from app.core.class_board import (
+    get_class_board_projector,
+)
+from app.core.class_board_events import (
+    get_class_board_event_publisher,
+)
+
 
 router = APIRouter(
     prefix="/classes",
     tags=["Classes"],
 )
+
+
 
 
 SESSION_DEPENDENCY = Depends(get_session)
@@ -42,7 +51,13 @@ def get_gym_class_service(
 ) -> GymClassService:
     repository = GymClassRepository(session)
 
-    return GymClassService(repository)
+    return GymClassService(
+        repository=repository,
+        class_board_projector=get_class_board_projector(),
+        class_board_event_publisher=(
+            get_class_board_event_publisher()
+        ),
+    )
 
 
 GYM_CLASS_SERVICE_DEPENDENCY = Depends(

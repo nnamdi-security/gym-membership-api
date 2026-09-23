@@ -15,3 +15,9 @@ class ClassBoardProjector(Protocol):
         full: bool,
     ) -> None:
         ...
+
+    def delete(
+        self,
+        class_id: int,
+    ) -> None:
+        ...

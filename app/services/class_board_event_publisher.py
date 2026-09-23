@@ -7,3 +7,9 @@ class ClassBoardEventPublisher(Protocol):
         payload: dict,
     ) -> None:
         ...
+
+    def delete(
+        self,
+        class_id: int,
+    ) -> None:
+        ...
