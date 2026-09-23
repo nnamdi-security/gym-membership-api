@@ -12,6 +12,4 @@ def get_class_board_event_publisher():
     if settings.app_env == "test":
         return NoOpClassBoardEventPublisher()
 
-    return RedisClassBoardEventPublisher(
-        get_redis()
-    )
+    return RedisClassBoardEventPublisher(get_redis())

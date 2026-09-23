@@ -5,11 +5,9 @@ class ClassBoardEventPublisher(Protocol):
     def publish(
         self,
         payload: dict,
-    ) -> None:
-        ...
+    ) -> None: ...
 
     def delete(
         self,
         class_id: int,
-    ) -> None:
-        ...
+    ) -> None: ...

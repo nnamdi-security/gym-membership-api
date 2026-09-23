@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 
 from fastapi.testclient import TestClient
@@ -11,7 +11,6 @@ from app.models.gym_class import GymClass
 from app.models.membership import Membership, MembershipStatus
 from app.models.plan import Plan
 from app.models.user import User, UserRole
-
 
 client = TestClient(app)
 
@@ -52,8 +51,8 @@ def create_active_membership(
             member_id=member.id,
             plan_id=plan.id,
             status=MembershipStatus.ACTIVE,
-            start_date=date.today() - timedelta(days=1),
-            end_date=date.today() + timedelta(days=29),
+            start_date=datetime.now(timezone.UTC) - timedelta(days=1),
+            end_date=datetime.now(timezone.UTC) + timedelta(days=29),
         )
 
         session.add(membership)
@@ -70,10 +69,7 @@ def create_future_class(
         gym_class = GymClass(
             name="Spin",
             capacity=capacity,
-            starts_at=(
-                datetime.now(timezone.utc)
-                + timedelta(hours=2)
-            ),
+            starts_at=(datetime.now(UTC) + timedelta(hours=2)),
         )
 
         session.add(gym_class)
@@ -108,7 +104,6 @@ def auth_headers(
     }
 
 
-
 def test_member_can_check_in():
     member = create_user(
         email="member@example.com",
@@ -135,7 +130,6 @@ def test_member_can_check_in():
 
     assert body["class_id"] == gym_class.id
     assert body["member_id"] == member.id
-
 
 
 def test_member_without_active_membership_cannot_check_in():
@@ -191,37 +185,6 @@ def test_member_cannot_check_in_twice():
 
 
 
-def test_member_cannot_check_in_twice():
-    member = create_user(
-        email="member@example.com",
-        role=UserRole.MEMBER,
-    )
-
-    create_active_membership(member)
-    gym_class = create_future_class()
-
-    token = login(member.email)
-
-    payload = {
-        "class_id": gym_class.id,
-    }
-
-    first = client.post(
-        "/api/v1/checkins",
-        headers=auth_headers(token),
-        json=payload,
-    )
-
-    second = client.post(
-        "/api/v1/checkins",
-        headers=auth_headers(token),
-        json=payload,
-    )
-
-    assert first.status_code == 201
-    assert second.status_code == 409
-
-
 
 def test_second_member_cannot_enter_full_class():
     first_member = create_user(
@@ -237,9 +200,7 @@ def test_second_member_cannot_enter_full_class():
     create_active_membership(first_member)
     create_active_membership(second_member)
 
-    gym_class = create_future_class(
-        capacity=1
-    )
+    gym_class = create_future_class(capacity=1)
 
     first_token = login(first_member.email)
     second_token = login(second_member.email)
@@ -263,10 +224,7 @@ def test_second_member_cannot_enter_full_class():
     assert first.status_code == 201
     assert second.status_code == 409
 
-    assert second.json() == {
-        "detail": "Class session is full"
-    }
-
+    assert second.json() == {"detail": "Class session is full"}
 
 
 def test_member_cannot_use_staff_checkin_endpoint():
@@ -289,7 +247,6 @@ def test_member_cannot_use_staff_checkin_endpoint():
     assert response.status_code == 403
 
 
-
 def test_member_can_view_own_checkins():
     member = create_user(
         email="member@example.com",
@@ -319,32 +276,6 @@ def test_member_can_view_own_checkins():
 
 
 
-def test_member_can_view_own_checkins():
-    member = create_user(
-        email="member@example.com",
-        role=UserRole.MEMBER,
-    )
-
-    create_active_membership(member)
-    gym_class = create_future_class()
-
-    token = login(member.email)
-
-    client.post(
-        "/api/v1/checkins",
-        headers=auth_headers(token),
-        json={
-            "class_id": gym_class.id,
-        },
-    )
-
-    response = client.get(
-        "/api/v1/checkins/me",
-        headers=auth_headers(token),
-    )
-
-    assert response.status_code == 200
-    assert len(response.json()) == 1
 
 
 def test_staff_can_view_class_checkins():

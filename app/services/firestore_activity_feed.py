@@ -23,12 +23,7 @@ class FirestoreActivityFeedProjector:
     ) -> None:
         event_id = uuid4().hex
 
-        document = (
-            self.client.collection(
-                self.COLLECTION_NAME
-            )
-            .document(event_id)
-        )
+        document = self.client.collection(self.COLLECTION_NAME).document(event_id)
 
         document.set(
             {

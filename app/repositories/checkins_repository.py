@@ -20,9 +20,7 @@ class CheckinRepository:
             Checkin.member_id == member_id,
         )
 
-        return self.session.exec(
-            statement
-        ).first()
+        return self.session.exec(statement).first()
 
     def get_for_class(
         self,
@@ -30,19 +28,11 @@ class CheckinRepository:
     ) -> list[Checkin]:
         statement = (
             select(Checkin)
-            .where(
-                Checkin.class_id == class_id
-            )
-            .order_by(
-                Checkin.checked_in_at
-            )
+            .where(Checkin.class_id == class_id)
+            .order_by(Checkin.checked_in_at)
         )
 
-        return list(
-            self.session.exec(
-                statement
-            ).all()
-        )
+        return list(self.session.exec(statement).all())
 
     def get_for_member(
         self,
@@ -50,19 +40,11 @@ class CheckinRepository:
     ) -> list[Checkin]:
         statement = (
             select(Checkin)
-            .where(
-                Checkin.member_id == member_id
-            )
-            .order_by(
-                Checkin.checked_in_at.desc()
-            )
+            .where(Checkin.member_id == member_id)
+            .order_by(Checkin.checked_in_at.desc())
         )
 
-        return list(
-            self.session.exec(
-                statement
-            ).all()
-        )
+        return list(self.session.exec(statement).all())
 
     def add(
         self,

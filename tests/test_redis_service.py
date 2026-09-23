@@ -33,44 +33,30 @@ class FakeRedis:
 
 
 def test_redis_service_ping():
-    service = RedisService(
-        FakeRedis()
-    )
+    service = RedisService(FakeRedis())
 
     assert service.ping() is True
 
 
 def test_redis_service_set_and_get():
-    service = RedisService(
-        FakeRedis()
-    )
+    service = RedisService(FakeRedis())
 
     service.set_value(
         "test:key",
         "hello",
     )
 
-    assert (
-        service.get_value("test:key")
-        == "hello"
-    )
+    assert service.get_value("test:key") == "hello"
 
 
 def test_redis_service_delete():
-    service = RedisService(
-        FakeRedis()
-    )
+    service = RedisService(FakeRedis())
 
     service.set_value(
         "test:key",
         "hello",
     )
 
-    service.delete_value(
-        "test:key"
-    )
+    service.delete_value("test:key")
 
-    assert (
-        service.get_value("test:key")
-        is None
-    )
+    assert service.get_value("test:key") is None

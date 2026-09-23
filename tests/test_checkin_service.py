@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 
@@ -11,12 +11,10 @@ from app.services.checkin_service import (
     AlreadyCheckedInError,
     CheckinService,
     GymClassAlreadyStartedError,
-    GymClassFullError,
     GymClassNotFoundError,
     InvalidMemberRoleError,
     MemberNotFoundError,
 )
-
 
 
 class FakeGymClassRepository:
@@ -47,10 +45,7 @@ class FakeCheckinRepository:
         member_id: int,
     ) -> Checkin | None:
         for checkin in self.checkins:
-            if (
-                checkin.class_id == class_id
-                and checkin.member_id == member_id
-            ):
+            if checkin.class_id == class_id and checkin.member_id == member_id:
                 return checkin
 
         return None
@@ -73,15 +68,9 @@ class FakeMembershipRepository:
         self,
         member_id: int,
     ) -> Membership | None:
-        membership = self.memberships.get(
-            member_id
-        )
+        membership = self.memberships.get(member_id)
 
-        if (
-            membership is not None
-            and membership.status
-            == MembershipStatus.ACTIVE
-        ):
+        if membership is not None and membership.status == MembershipStatus.ACTIVE:
             return membership
 
         return None
@@ -140,18 +129,15 @@ def build_service():
         member_id=1,
         plan_id=1,
         status=MembershipStatus.ACTIVE,
-        start_date=date.today() - timedelta(days=5),
-        end_date=date.today() + timedelta(days=25),
+        start_date=datetime.now(timezone.UTC) - timedelta(days=5),
+        end_date=datetime.now(timezone.UTC) + timedelta(days=25),
     )
 
     gym_class_repository.classes[1] = GymClass(
         id=1,
         name="Spin",
         capacity=12,
-        starts_at=(
-            datetime.now(timezone.utc)
-            + timedelta(hours=2)
-        ),
+        starts_at=(datetime.now(UTC) + timedelta(hours=2)),
     )
 
     service = CheckinService(
@@ -169,7 +155,6 @@ def build_service():
         membership_repository,
         user_repository,
     )
-
 
 
 def test_member_can_check_in():
@@ -190,72 +175,43 @@ def test_member_can_check_in():
     assert checkin.class_id == 1
     assert checkin.member_id == 1
 
-    assert len(
-        checkin_repository.checkins
-    ) == 1
-
-
-
+    assert len(checkin_repository.checkins) == 1
 
 
 def test_checkin_rejects_missing_class():
-    service, class_repository, _, _, _ = (
-        build_service()
-    )
+    service, class_repository, _, _, _ = build_service()
 
     class_repository.classes.clear()
 
-    with pytest.raises(
-        GymClassNotFoundError
-    ):
+    with pytest.raises(GymClassNotFoundError):
         service.check_in(
             class_id=1,
             member_id=1,
         )
-
-
-
-
 
 
 def test_checkin_rejects_missing_member():
-    service, _, _, _, user_repository = (
-        build_service()
-    )
+    service, _, _, _, user_repository = build_service()
 
     user_repository.users.clear()
 
-    with pytest.raises(
-        MemberNotFoundError
-    ):
+    with pytest.raises(MemberNotFoundError):
         service.check_in(
             class_id=1,
             member_id=1,
         )
-
-
 
 
 def test_checkin_rejects_staff_user():
-    service, _, _, _, user_repository = (
-        build_service()
-    )
+    service, _, _, _, user_repository = build_service()
 
-    user_repository.users[1].role = (
-        UserRole.FRONT_DESK
-    )
+    user_repository.users[1].role = UserRole.FRONT_DESK
 
-    with pytest.raises(
-        InvalidMemberRoleError
-    ):
+    with pytest.raises(InvalidMemberRoleError):
         service.check_in(
             class_id=1,
             member_id=1,
         )
-
-
-
-
 
 
 def test_checkin_requires_active_membership():
@@ -269,15 +225,11 @@ def test_checkin_requires_active_membership():
 
     membership_repository.memberships.clear()
 
-    with pytest.raises(
-        ActiveMembershipRequiredError
-    ):
+    with pytest.raises(ActiveMembershipRequiredError):
         service.check_in(
             class_id=1,
             member_id=1,
         )
-
-
 
 
 def test_checkin_rejects_expired_active_membership():
@@ -289,21 +241,15 @@ def test_checkin_rejects_expired_active_membership():
         _,
     ) = build_service()
 
-    membership = (
-        membership_repository.memberships[1]
-    )
+    membership = membership_repository.memberships[1]
 
-    membership.end_date = date.today()
+    membership.end_date = datetime.now(timezone.UTC)
 
-    with pytest.raises(
-        ActiveMembershipRequiredError
-    ):
+    with pytest.raises(ActiveMembershipRequiredError):
         service.check_in(
             class_id=1,
             member_id=1,
         )
-
-
 
 
 def test_member_cannot_check_in_twice():
@@ -320,15 +266,11 @@ def test_member_cannot_check_in_twice():
         member_id=1,
     )
 
-    with pytest.raises(
-        AlreadyCheckedInError
-    ):
+    with pytest.raises(AlreadyCheckedInError):
         service.check_in(
             class_id=1,
             member_id=1,
         )
-
-
 
 
 def test_checkin_rejects_started_class():
@@ -340,20 +282,15 @@ def test_checkin_rejects_started_class():
         _,
     ) = build_service()
 
-    class_repository.classes[1].starts_at = (
-        datetime.now(timezone.utc)
-        - timedelta(minutes=1)
+    class_repository.classes[1].starts_at = datetime.now(UTC) - timedelta(
+        minutes=1
     )
 
-    with pytest.raises(
-        GymClassAlreadyStartedError
-    ):
+    with pytest.raises(GymClassAlreadyStartedError):
         service.check_in(
             class_id=1,
             member_id=1,
         )
-
-
 
 
 class FakeClassBoardProjector:
@@ -367,13 +304,9 @@ class FakeClassBoardProjector:
         self.payloads.append(kwargs)
 
 
-
-
-
 def test_successful_checkin_publishes_class_board():
     (
         service,
-        class_repository,
         checkin_repository,
         _,
         _,
@@ -398,19 +331,12 @@ def test_successful_checkin_publishes_class_board():
     assert payload["full"] is False
 
 
-
-
 class FailingClassBoardProjector:
     def publish(
         self,
         **kwargs,
     ):
-        raise RuntimeError(
-            "Firestore unavailable"
-        )
-
-
-
+        raise RuntimeError("Firestore unavailable")
 
 
 def test_firestore_failure_does_not_undo_checkin():
@@ -423,9 +349,7 @@ def test_firestore_failure_does_not_undo_checkin():
         _,
     ) = build_service()
 
-    service.class_board_projector = (
-        FailingClassBoardProjector()
-    )
+    service.class_board_projector = FailingClassBoardProjector()
 
     checkin = service.check_in(
         class_id=1,

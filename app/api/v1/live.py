@@ -8,16 +8,13 @@ from app.api.dependencies.auth import get_current_user
 from app.core.channels import CLASS_BOARD_CHANNEL
 from app.core.redis import get_async_redis
 
-
 router = APIRouter(
     prefix="/live",
     tags=["Live"],
 )
 
 
-CURRENT_USER_DEPENDENCY = Depends(
-    get_current_user
-)
+CURRENT_USER_DEPENDENCY = Depends(get_current_user)
 
 
 async def class_board_event_stream(
@@ -26,9 +23,7 @@ async def class_board_event_stream(
 ):
     pubsub = redis_client.pubsub()
 
-    await pubsub.subscribe(
-        CLASS_BOARD_CHANNEL
-    )
+    await pubsub.subscribe(CLASS_BOARD_CHANNEL)
 
     try:
         while True:
@@ -43,10 +38,7 @@ async def class_board_event_stream(
             if message is not None:
                 data = message["data"]
 
-                yield (
-                    "event: class-board\n"
-                    f"data: {data}\n\n"
-                )
+                yield (f"event: class-board\ndata: {data}\n\n")
 
             else:
                 yield ": keep-alive\n\n"
@@ -54,11 +46,8 @@ async def class_board_event_stream(
             await asyncio.sleep(0.1)
 
     finally:
-        await pubsub.unsubscribe(
-            CLASS_BOARD_CHANNEL
-        )
+        await pubsub.unsubscribe(CLASS_BOARD_CHANNEL)
         await pubsub.aclose()
-
 
 
 @router.get(

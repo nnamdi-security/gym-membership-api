@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -14,6 +14,7 @@ from app.services.gym_class_service import (
     GymClassService,
     GymClassStartsInPastError,
 )
+
 
 class FakeGymClassRepository:
     def __init__(self):
@@ -64,15 +65,11 @@ class FakeGymClassRepository:
         del self.classes[gym_class.id]
 
 
-
 def test_create_future_class():
     repository = FakeGymClassRepository()
     service = GymClassService(repository)
 
-    starts_at = (
-        datetime.now(timezone.utc)
-        + timedelta(days=1)
-    )
+    starts_at = datetime.now(UTC) + timedelta(days=1)
 
     gym_class = service.create_class(
         GymClassCreateRequest(
@@ -91,17 +88,12 @@ def test_create_rejects_class_in_past():
     repository = FakeGymClassRepository()
     service = GymClassService(repository)
 
-    with pytest.raises(
-        GymClassStartsInPastError
-    ):
+    with pytest.raises(GymClassStartsInPastError):
         service.create_class(
             GymClassCreateRequest(
                 name="Spin",
                 capacity=12,
-                starts_at=(
-                    datetime.now(timezone.utc)
-                    - timedelta(hours=1)
-                ),
+                starts_at=(datetime.now(UTC) - timedelta(hours=1)),
             )
         )
 
@@ -110,12 +102,8 @@ def test_get_class_raises_when_missing():
     repository = FakeGymClassRepository()
     service = GymClassService(repository)
 
-    with pytest.raises(
-        GymClassNotFoundError
-    ):
+    with pytest.raises(GymClassNotFoundError):
         service.get_class(999)
-
-
 
 
 def test_update_class_changes_only_supplied_fields():
@@ -126,10 +114,7 @@ def test_update_class_changes_only_supplied_fields():
         GymClassCreateRequest(
             name="Spin",
             capacity=12,
-            starts_at=(
-                datetime.now(timezone.utc)
-                + timedelta(days=1)
-            ),
+            starts_at=(datetime.now(UTC) + timedelta(days=1)),
         )
     )
 
@@ -144,7 +129,6 @@ def test_update_class_changes_only_supplied_fields():
     assert updated.capacity == 15
 
 
-
 def test_update_rejects_capacity_below_checkin_count():
     repository = FakeGymClassRepository()
     service = GymClassService(repository)
@@ -153,27 +137,19 @@ def test_update_rejects_capacity_below_checkin_count():
         GymClassCreateRequest(
             name="Spin",
             capacity=12,
-            starts_at=(
-                datetime.now(timezone.utc)
-                + timedelta(days=1)
-            ),
+            starts_at=(datetime.now(UTC) + timedelta(days=1)),
         )
     )
 
-    repository.checkin_counts[
-        gym_class.id
-    ] = 10
+    repository.checkin_counts[gym_class.id] = 10
 
-    with pytest.raises(
-        GymClassCapacityBelowAttendanceError
-    ):
+    with pytest.raises(GymClassCapacityBelowAttendanceError):
         service.update_class(
             gym_class.id,
             GymClassUpdateRequest(
                 capacity=9,
             ),
         )
-
 
 
 def test_update_allows_capacity_equal_to_attendance():
@@ -184,16 +160,11 @@ def test_update_allows_capacity_equal_to_attendance():
         GymClassCreateRequest(
             name="Spin",
             capacity=12,
-            starts_at=(
-                datetime.now(timezone.utc)
-                + timedelta(days=1)
-            ),
+            starts_at=(datetime.now(UTC) + timedelta(days=1)),
         )
     )
 
-    repository.checkin_counts[
-        gym_class.id
-    ] = 10
+    repository.checkin_counts[gym_class.id] = 10
 
     updated = service.update_class(
         gym_class.id,
@@ -205,8 +176,6 @@ def test_update_allows_capacity_equal_to_attendance():
     assert updated.capacity == 10
 
 
-
-
 def test_delete_unused_class():
     repository = FakeGymClassRepository()
     service = GymClassService(repository)
@@ -215,20 +184,13 @@ def test_delete_unused_class():
         GymClassCreateRequest(
             name="Yoga",
             capacity=20,
-            starts_at=(
-                datetime.now(timezone.utc)
-                + timedelta(days=1)
-            ),
+            starts_at=(datetime.now(UTC) + timedelta(days=1)),
         )
     )
 
-    service.delete_class(
-        gym_class.id
-    )
+    service.delete_class(gym_class.id)
 
-    assert repository.get_by_id(
-        gym_class.id
-    ) is None
+    assert repository.get_by_id(gym_class.id) is None
 
 
 def test_delete_rejects_class_with_checkins():
@@ -239,23 +201,14 @@ def test_delete_rejects_class_with_checkins():
         GymClassCreateRequest(
             name="Spin",
             capacity=12,
-            starts_at=(
-                datetime.now(timezone.utc)
-                + timedelta(days=1)
-            ),
+            starts_at=(datetime.now(UTC) + timedelta(days=1)),
         )
     )
 
-    repository.checkin_counts[
-        gym_class.id
-    ] = 3
+    repository.checkin_counts[gym_class.id] = 3
 
-    with pytest.raises(
-        GymClassHasCheckinsError
-    ):
-        service.delete_class(
-            gym_class.id
-        )
+    with pytest.raises(GymClassHasCheckinsError):
+        service.delete_class(gym_class.id)
 
 
 def _validate_future_datetime(
@@ -265,12 +218,8 @@ def _validate_future_datetime(
     if starts_at.tzinfo is None:
         raise GymClassStartsInPastError
 
-    if starts_at <= datetime.now(timezone.utc):
+    if starts_at <= datetime.now(UTC):
         raise GymClassStartsInPastError
-
-    
-
-
 
 
 def test_get_class_board_returns_capacity_summary():
@@ -281,26 +230,18 @@ def test_get_class_board_returns_capacity_summary():
         GymClassCreateRequest(
             name="Spin",
             capacity=12,
-            starts_at=(
-                datetime.now(timezone.utc)
-                + timedelta(days=1)
-            ),
+            starts_at=(datetime.now(UTC) + timedelta(days=1)),
         )
     )
 
-    repository.checkin_counts[
-        gym_class.id
-    ] = 9
+    repository.checkin_counts[gym_class.id] = 9
 
-    board = service.get_class_board(
-        gym_class.id
-    )
+    board = service.get_class_board(gym_class.id)
 
     assert board.capacity == 12
     assert board.checked_in == 9
     assert board.remaining == 3
     assert board.full is False
-
 
 
 def test_get_class_board_marks_full_class():
@@ -311,20 +252,13 @@ def test_get_class_board_marks_full_class():
         GymClassCreateRequest(
             name="Spin",
             capacity=12,
-            starts_at=(
-                datetime.now(timezone.utc)
-                + timedelta(days=1)
-            ),
+            starts_at=(datetime.now(UTC) + timedelta(days=1)),
         )
     )
 
-    repository.checkin_counts[
-        gym_class.id
-    ] = 12
+    repository.checkin_counts[gym_class.id] = 12
 
-    board = service.get_class_board(
-        gym_class.id
-    )
+    board = service.get_class_board(gym_class.id)
 
     assert board.remaining == 0
     assert board.full is True

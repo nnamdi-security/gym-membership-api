@@ -1,20 +1,17 @@
-from datetime import date, datetime, timezone, timedelta
+from datetime import UTC, date, datetime, timedelta
 
+from app.models.checkin import Checkin
 from app.models.gym_class import GymClass
+from app.models.user import User, UserRole
 from app.repositories.gym_class_repository import (
     GymClassRepository,
 )
-
-from app.models.checkin import Checkin
-from app.models.user import User, UserRole
 
 
 def test_create_class(
     db_session,
 ):
-    repository = GymClassRepository(
-        db_session
-    )
+    repository = GymClassRepository(db_session)
 
     gym_class = GymClass(
         name="Spin",
@@ -25,27 +22,21 @@ def test_create_class(
             22,
             18,
             0,
-            tzinfo=timezone.utc,
+            tzinfo=UTC,
         ),
     )
 
-    created = repository.create(
-        gym_class
-    )
+    created = repository.create(gym_class)
 
     assert created.id is not None
     assert created.name == "Spin"
     assert created.capacity == 12
 
 
-
-
 def test_get_class_by_id(
     db_session,
 ):
-    repository = GymClassRepository(
-        db_session
-    )
+    repository = GymClassRepository(db_session)
 
     created = repository.create(
         GymClass(
@@ -57,40 +48,29 @@ def test_get_class_by_id(
                 22,
                 9,
                 0,
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             ),
         )
     )
 
-    found = repository.get_by_id(
-        created.id
-    )
+    found = repository.get_by_id(created.id)
 
     assert found is not None
     assert found.id == created.id
 
 
-
-
 def test_get_by_id_returns_none_when_missing(
     db_session,
 ):
-    repository = GymClassRepository(
-        db_session
-    )
+    repository = GymClassRepository(db_session)
 
-    assert repository.get_by_id(
-        999999
-    ) is None
-
+    assert repository.get_by_id(999999) is None
 
 
 def test_get_all_orders_by_start_time(
     db_session,
 ):
-    repository = GymClassRepository(
-        db_session
-    )
+    repository = GymClassRepository(db_session)
 
     repository.create(
         GymClass(
@@ -102,7 +82,7 @@ def test_get_all_orders_by_start_time(
                 22,
                 18,
                 0,
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             ),
         )
     )
@@ -117,7 +97,7 @@ def test_get_all_orders_by_start_time(
                 22,
                 8,
                 0,
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             ),
         )
     )
@@ -129,13 +109,10 @@ def test_get_all_orders_by_start_time(
     assert classes[1].name == "Evening Spin"
 
 
-
 def test_get_by_date_returns_only_requested_day(
     db_session,
 ):
-    repository = GymClassRepository(
-        db_session
-    )
+    repository = GymClassRepository(db_session)
 
     repository.create(
         GymClass(
@@ -147,7 +124,7 @@ def test_get_by_date_returns_only_requested_day(
                 22,
                 10,
                 0,
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             ),
         )
     )
@@ -162,28 +139,21 @@ def test_get_by_date_returns_only_requested_day(
                 23,
                 10,
                 0,
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             ),
         )
     )
 
-    classes = repository.get_by_date(
-        date(2026, 9, 22)
-    )
+    classes = repository.get_by_date(date(2026, 9, 22))
 
     assert len(classes) == 1
     assert classes[0].name == "Day One"
 
 
-
-
-
 def test_count_checkins_returns_zero_when_empty(
     db_session,
 ):
-    repository = GymClassRepository(
-        db_session
-    )
+    repository = GymClassRepository(db_session)
 
     gym_class = repository.create(
         GymClass(
@@ -195,25 +165,20 @@ def test_count_checkins_returns_zero_when_empty(
                 22,
                 18,
                 0,
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             ),
         )
     )
 
-    count = repository.count_checkins(
-        gym_class.id
-    )
+    count = repository.count_checkins(gym_class.id)
 
     assert count == 0
-
 
 
 def test_count_checkins_returns_actual_count(
     db_session,
 ):
-    repository = GymClassRepository(
-        db_session
-    )
+    repository = GymClassRepository(db_session)
 
     gym_class = repository.create(
         GymClass(
@@ -225,7 +190,7 @@ def test_count_checkins_returns_actual_count(
                 22,
                 18,
                 0,
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             ),
         )
     )
@@ -265,20 +230,15 @@ def test_count_checkins_returns_actual_count(
 
     db_session.commit()
 
-    count = repository.count_checkins(
-        gym_class.id
-    )
+    count = repository.count_checkins(gym_class.id)
 
     assert count == 2
-
 
 
 def test_update_class(
     db_session,
 ):
-    repository = GymClassRepository(
-        db_session
-    )
+    repository = GymClassRepository(db_session)
 
     gym_class = repository.create(
         GymClass(
@@ -290,27 +250,22 @@ def test_update_class(
                 22,
                 18,
                 0,
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             ),
         )
     )
 
     gym_class.capacity = 15
 
-    updated = repository.update(
-        gym_class
-    )
+    updated = repository.update(gym_class)
 
     assert updated.capacity == 15
-
 
 
 def test_delete_class(
     db_session,
 ):
-    repository = GymClassRepository(
-        db_session
-    )
+    repository = GymClassRepository(db_session)
 
     gym_class = repository.create(
         GymClass(
@@ -322,45 +277,32 @@ def test_delete_class(
                 22,
                 12,
                 0,
-                tzinfo=timezone.utc,
+                tzinfo=UTC,
             ),
         )
     )
 
     class_id = gym_class.id
 
-    repository.delete(
-        gym_class
-    )
+    repository.delete(gym_class)
 
-    assert repository.get_by_id(
-        class_id
-    ) is None
-
-
+    assert repository.get_by_id(class_id) is None
 
 
 def test_get_by_id_for_update_returns_class(
     db_session,
 ):
-    repository = GymClassRepository(
-        db_session
-    )
+    repository = GymClassRepository(db_session)
 
     gym_class = repository.create(
         GymClass(
             name="Spin",
             capacity=12,
-            starts_at=(
-                datetime.now(timezone.utc)
-                + timedelta(days=1)
-            ),
+            starts_at=(datetime.now(UTC) + timedelta(days=1)),
         )
     )
 
-    found = repository.get_by_id_for_update(
-        gym_class.id
-    )
+    found = repository.get_by_id_for_update(gym_class.id)
 
     assert found is not None
     assert found.id == gym_class.id

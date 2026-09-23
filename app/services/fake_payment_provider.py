@@ -19,10 +19,5 @@ class FakePaymentProvider:
     ) -> PaymentInitialization:
         return PaymentInitialization(
             provider=self.name,
-            checkout_url=(
-                "https://example.test/pay/"
-                f"{reference}"
-            ),
+            checkout_url=(f"https://example.test/pay/{reference}"),
         )
-
-

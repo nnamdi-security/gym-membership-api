@@ -5,7 +5,6 @@ class NoOpClassBoardProjector:
     ) -> None:
         return None
 
-
     def delete(
         self,
         class_id: int,

@@ -1,9 +1,8 @@
 from decimal import Decimal
-from app.repositories.user import UserRepository
+
 import pytest
 from sqlmodel import Session
 
-from app.db.session import engine
 from app.models.membership import (
     Membership,
     MembershipStatus,
@@ -21,15 +20,15 @@ from app.repositories.payment_repository import (
     PaymentRepository,
 )
 from app.repositories.plan_repository import PlanRepository
+from app.repositories.user import UserRepository
 from app.schemas.payment import StaffPaymentRequest
 from app.services.payment_service import (
     InvalidStaffPaymentMethodError,
     MembershipNotAwaitingPaymentError,
+    MembershipNotFoundError,
     PaymentService,
     PendingOnlinePaymentExistsError,
-    MembershipNotFoundError
 )
-
 
 
 def create_pending_membership(
@@ -75,28 +74,16 @@ def create_pending_membership(
     return staff, plan, membership
 
 
-
-
 def test_staff_payment_activates_membership_atomically(
     db_session,
 ):
-    staff, plan, membership = (
-        create_pending_membership(
-            db_session
-        )
-    )
+    staff, plan, membership = create_pending_membership(db_session)
 
     service = PaymentService(
         session=db_session,
-        payment_repository=PaymentRepository(
-            db_session
-        ),
-        membership_repository=MembershipRepository(
-            db_session
-        ),
-        plan_repository=PlanRepository(
-            db_session
-        ),
+        payment_repository=PaymentRepository(db_session),
+        membership_repository=MembershipRepository(db_session),
+        plan_repository=PlanRepository(db_session),
     )
 
     payment = service.record_staff_payment(
@@ -115,36 +102,21 @@ def test_staff_payment_activates_membership_atomically(
 
     db_session.refresh(membership)
 
-    assert (
-        membership.status
-        == MembershipStatus.ACTIVE
-    )
+    assert membership.status == MembershipStatus.ACTIVE
     assert membership.start_date is not None
     assert membership.end_date is not None
-
-
 
 
 def test_staff_payment_uses_plan_price(
     db_session,
 ):
-    staff, plan, membership = (
-        create_pending_membership(
-            db_session
-        )
-    )
+    staff, plan, membership = create_pending_membership(db_session)
 
     service = PaymentService(
         session=db_session,
-        payment_repository=PaymentRepository(
-            db_session
-        ),
-        membership_repository=MembershipRepository(
-            db_session
-        ),
-        plan_repository=PlanRepository(
-            db_session
-        ),
+        payment_repository=PaymentRepository(db_session),
+        membership_repository=MembershipRepository(db_session),
+        plan_repository=PlanRepository(db_session),
     )
 
     payment = service.record_staff_payment(
@@ -158,32 +130,19 @@ def test_staff_payment_uses_plan_price(
     assert payment.amount == plan.price
 
 
-
 def test_staff_payment_rejects_online_method(
     db_session,
 ):
-    staff, _, membership = (
-        create_pending_membership(
-            db_session
-        )
-    )
+    staff, _, membership = create_pending_membership(db_session)
 
     service = PaymentService(
         session=db_session,
-        payment_repository=PaymentRepository(
-            db_session
-        ),
-        membership_repository=MembershipRepository(
-            db_session
-        ),
-        plan_repository=PlanRepository(
-            db_session
-        ),
+        payment_repository=PaymentRepository(db_session),
+        membership_repository=MembershipRepository(db_session),
+        plan_repository=PlanRepository(db_session),
     )
 
-    with pytest.raises(
-        InvalidStaffPaymentMethodError
-    ):
+    with pytest.raises(InvalidStaffPaymentMethodError):
         service.record_staff_payment(
             StaffPaymentRequest(
                 membership_id=membership.id,
@@ -193,15 +152,10 @@ def test_staff_payment_rejects_online_method(
         )
 
 
-
 def test_payment_rejects_membership_not_awaiting_payment(
     db_session,
 ):
-    staff, _, membership = (
-        create_pending_membership(
-            db_session
-        )
-    )
+    staff, _, membership = create_pending_membership(db_session)
 
     membership.status = MembershipStatus.ACTIVE
     db_session.add(membership)
@@ -209,20 +163,12 @@ def test_payment_rejects_membership_not_awaiting_payment(
 
     service = PaymentService(
         session=db_session,
-        payment_repository=PaymentRepository(
-            db_session
-        ),
-        membership_repository=MembershipRepository(
-            db_session
-        ),
-        plan_repository=PlanRepository(
-            db_session
-        ),
+        payment_repository=PaymentRepository(db_session),
+        membership_repository=MembershipRepository(db_session),
+        plan_repository=PlanRepository(db_session),
     )
 
-    with pytest.raises(
-        MembershipNotAwaitingPaymentError
-    ):
+    with pytest.raises(MembershipNotAwaitingPaymentError):
         service.record_staff_payment(
             StaffPaymentRequest(
                 membership_id=membership.id,
@@ -230,7 +176,6 @@ def test_payment_rejects_membership_not_awaiting_payment(
             ),
             recorded_by=staff.id,
         )
-
 
 
 def build_payment_service(
@@ -244,9 +189,6 @@ def build_payment_service(
         user_repository=UserRepository(session),
         payment_provider=FakeProvider(),
     )
-
-
-
 
 
 from app.services.payment_provider import (
@@ -268,42 +210,24 @@ class FakeProvider:
     ):
         return PaymentInitialization(
             provider=self.name,
-            checkout_url=(
-                f"https://provider.test/{reference}"
-            ),
+            checkout_url=(f"https://provider.test/{reference}"),
         )
-
-
-
-
 
 
 def test_online_initialization_creates_pending_payment(
     db_session,
 ):
-    member, plan, membership = (
-        create_pending_membership(
-            db_session
-        )
-    )
+    member, plan, membership = create_pending_membership(db_session)
 
-    service = build_payment_service(
-        db_session
-    )
+    service = build_payment_service(db_session)
 
     result = service.initialize_online_payment(
         membership_id=membership.id,
         member_id=member.id,
     )
 
-    assert (
-        result.payment.status
-        == PaymentStatus.PENDING
-    )
-    assert (
-        result.payment.method
-        == PaymentMethod.ONLINE
-    )
+    assert result.payment.status == PaymentStatus.PENDING
+    assert result.payment.method == PaymentMethod.ONLINE
     assert result.payment.amount == plan.price
     assert result.payment.recorded_by is None
     assert result.payment.paid_at is None
@@ -311,73 +235,47 @@ def test_online_initialization_creates_pending_payment(
 
     db_session.refresh(membership)
 
-    assert (
-        membership.status
-        == MembershipStatus.PENDING_PAYMENT
-    )
-
+    assert membership.status == MembershipStatus.PENDING_PAYMENT
 
 
 def test_online_initialization_rejects_duplicate_pending_attempt(
     db_session,
 ):
-    member, _, membership = (
-        create_pending_membership(
-            db_session
-        )
-    )
+    member, _, membership = create_pending_membership(db_session)
 
-    service = build_payment_service(
-        db_session
-    )
+    service = build_payment_service(db_session)
 
     service.initialize_online_payment(
         membership_id=membership.id,
         member_id=member.id,
     )
 
-    with pytest.raises(
-        PendingOnlinePaymentExistsError
-    ):
+    with pytest.raises(PendingOnlinePaymentExistsError):
         service.initialize_online_payment(
             membership_id=membership.id,
             member_id=member.id,
         )
 
 
-
-
-
-
-
-
 def test_online_initialization_rejects_another_members_membership(
     db_session,
 ):
-        member, _, membership = (
-            create_pending_membership(
-                db_session
-            )
+    _, membership = create_pending_membership(db_session)
+
+    other = User(
+        email="other@example.com",
+        password_hash="hash",
+        role=UserRole.MEMBER,
+    )
+
+    db_session.add(other)
+    db_session.commit()
+    db_session.refresh(other)
+
+    service = build_payment_service(db_session)
+
+    with pytest.raises(MembershipNotFoundError):
+        service.initialize_online_payment(
+            membership_id=membership.id,
+            member_id=other.id,
         )
-
-        other = User(
-            email="other@example.com",
-            password_hash="hash",
-            role=UserRole.MEMBER,
-        )
-
-        db_session.add(other)
-        db_session.commit()
-        db_session.refresh(other)
-
-        service = build_payment_service(
-            db_session
-        )
-
-        with pytest.raises(
-            MembershipNotFoundError
-        ):
-            service.initialize_online_payment(
-                membership_id=membership.id,
-                member_id=other.id,
-            )

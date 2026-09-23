@@ -14,23 +14,15 @@ class ProcessedEventRepository:
         self,
         event_id: str,
     ) -> ProcessedEvent | None:
-        statement = select(
-            ProcessedEvent
-        ).where(
-            ProcessedEvent.event_id == event_id
-        )
+        statement = select(ProcessedEvent).where(ProcessedEvent.event_id == event_id)
 
-        return self.session.exec(
-            statement
-        ).first()
+        return self.session.exec(statement).first()
 
     def add(
         self,
         processed_event: ProcessedEvent,
     ) -> ProcessedEvent:
-        self.session.add(
-            processed_event
-        )
+        self.session.add(processed_event)
 
         return processed_event
 
@@ -38,15 +30,11 @@ class ProcessedEventRepository:
         self,
         processed_event: ProcessedEvent,
     ) -> ProcessedEvent:
-        self.session.add(
-            processed_event
-        )
+        self.session.add(processed_event)
         self.session.commit()
-        self.session.refresh(
-            processed_event
-        )
+        self.session.refresh(processed_event)
 
         return processed_event
 
 
-   # reference identifies the payment while event_id identifies the provider notification.
+# reference identifies the payment while event_id identifies the provider notification.

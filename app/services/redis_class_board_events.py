@@ -24,7 +24,6 @@ class RedisClassBoardEventPublisher:
             ),
         )
 
-
     def delete(
         self,
         class_id: int,

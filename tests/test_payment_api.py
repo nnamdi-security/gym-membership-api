@@ -14,12 +14,10 @@ from app.models.payment import PaymentMethod
 from app.models.plan import Plan
 from app.models.user import User, UserRole
 
-
 client = TestClient(app)
 
 
-
-#Helper function
+# Helper function
 def create_user(
     email: str,
     role: UserRole,
@@ -43,9 +41,7 @@ def create_pending_membership() -> tuple[User, Plan, Membership]:
     with Session(engine) as session:
         member = User(
             email="member@example.com",
-            password_hash=hash_password(
-                "StrongPass123!"
-            ),
+            password_hash=hash_password("StrongPass123!"),
             role=UserRole.MEMBER,
         )
 
@@ -106,9 +102,7 @@ def test_front_desk_can_record_payment():
         role=UserRole.FRONT_DESK,
     )
 
-    _, plan, membership = (
-        create_pending_membership()
-    )
+    _, plan, membership = create_pending_membership()
 
     token = login(staff.email)
 
@@ -133,16 +127,13 @@ def test_front_desk_can_record_payment():
     assert body["paid_at"] is not None
 
 
-
 def test_staff_payment_activates_membership():
     staff = create_user(
         email="frontdesk@example.com",
         role=UserRole.FRONT_DESK,
     )
 
-    _, _, membership = (
-        create_pending_membership()
-    )
+    _, _, membership = create_pending_membership()
 
     token = login(staff.email)
 
@@ -164,21 +155,13 @@ def test_staff_payment_activates_membership():
         )
 
         assert stored is not None
-        assert (
-            stored.status
-            == MembershipStatus.ACTIVE
-        )
+        assert stored.status == MembershipStatus.ACTIVE
         assert stored.start_date is not None
         assert stored.end_date is not None
 
 
-
-
-
 def test_member_cannot_record_staff_payment():
-    member, _, membership = (
-        create_pending_membership()
-    )
+    member, _, membership = create_pending_membership()
 
     token = login(member.email)
 
@@ -194,17 +177,13 @@ def test_member_cannot_record_staff_payment():
     assert response.status_code == 403
 
 
-
-
 def test_staff_cannot_record_online_payment_manually():
     staff = create_user(
         email="frontdesk@example.com",
         role=UserRole.FRONT_DESK,
     )
 
-    _, _, membership = (
-        create_pending_membership()
-    )
+    _, _, membership = create_pending_membership()
 
     token = login(staff.email)
 
@@ -220,16 +199,13 @@ def test_staff_cannot_record_online_payment_manually():
     assert response.status_code == 422
 
 
-
 def test_membership_cannot_be_paid_twice():
     staff = create_user(
         email="frontdesk@example.com",
         role=UserRole.FRONT_DESK,
     )
 
-    _, _, membership = (
-        create_pending_membership()
-    )
+    _, _, membership = create_pending_membership()
 
     token = login(staff.email)
 
@@ -257,16 +233,13 @@ def test_membership_cannot_be_paid_twice():
     assert second.status_code == 409
 
 
-
 def test_staff_can_get_payment():
     staff = create_user(
         email="frontdesk@example.com",
         role=UserRole.FRONT_DESK,
     )
 
-    _, _, membership = (
-        create_pending_membership()
-    )
+    _, _, membership = create_pending_membership()
 
     token = login(staff.email)
 
@@ -290,16 +263,13 @@ def test_staff_can_get_payment():
     assert response.json()["id"] == payment_id
 
 
-
 def test_staff_can_view_membership_payment_history():
     staff = create_user(
         email="frontdesk@example.com",
         role=UserRole.FRONT_DESK,
     )
 
-    _, _, membership = (
-        create_pending_membership()
-    )
+    _, _, membership = create_pending_membership()
 
     token = login(staff.email)
 
@@ -313,10 +283,7 @@ def test_staff_can_view_membership_payment_history():
     )
 
     response = client.get(
-        (
-            "/api/v1/payments/"
-            f"membership/{membership.id}"
-        ),
+        (f"/api/v1/payments/membership/{membership.id}"),
         headers=auth_headers(token),
     )
 
@@ -325,19 +292,11 @@ def test_staff_can_view_membership_payment_history():
     payments = response.json()
 
     assert len(payments) == 1
-    assert (
-        payments[0]["membership_id"]
-        == membership.id
-    )
-
-
-
+    assert payments[0]["membership_id"] == membership.id
 
 
 def test_member_can_initialize_online_payment():
-    member, plan, membership = (
-        create_pending_membership()
-    )
+    member, plan, membership = create_pending_membership()
 
     token = login(member.email)
 
@@ -353,14 +312,8 @@ def test_member_can_initialize_online_payment():
 
     body = response.json()
 
-    assert (
-        body["payment"]["membership_id"]
-        == membership.id
-    )
-    assert (
-        Decimal(body["payment"]["amount"])
-        == plan.price
-    )
+    assert body["payment"]["membership_id"] == membership.id
+    assert Decimal(body["payment"]["amount"]) == plan.price
     assert body["payment"]["status"] == "pending"
     assert body["payment"]["method"] == "online"
     assert body["payment"]["paid_at"] is None

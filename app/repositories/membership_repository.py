@@ -60,7 +60,6 @@ class MembershipRepository:
 
         return membership
 
-
     def get_pending_for_member(
         self,
         member_id: int,
@@ -75,7 +74,6 @@ class MembershipRepository:
         )
 
         return self.session.exec(statement).first()
-
 
     def get_current_for_member(
         # Does this member already have an existing live membership, including one temporarily frozen?
@@ -98,42 +96,36 @@ class MembershipRepository:
 
         return self.session.exec(statement).first()
 
-
-
     def get_active_expiring_on(
-            self,
-            target_date: date,
-        ) -> list[Membership]:
-            statement = (
-                select(Membership)
-                .where(
-                    Membership.status == MembershipStatus.ACTIVE,
-                    Membership.end_date == target_date,
-                )
-                .order_by(Membership.id)
+        self,
+        target_date: date,
+    ) -> list[Membership]:
+        statement = (
+            select(Membership)
+            .where(
+                Membership.status == MembershipStatus.ACTIVE,
+                Membership.end_date == target_date,
             )
+            .order_by(Membership.id)
+        )
 
-            return list(self.session.exec(statement).all())
-
-
+        return list(self.session.exec(statement).all())
 
     def get_active_expired_by(
-            self,
-            as_of_date: date,
-        ) -> list[Membership]:
-            statement = (
-                select(Membership)
-                .where(
-                    Membership.status == MembershipStatus.ACTIVE,
-                    Membership.end_date.is_not(None),
-                    Membership.end_date <= as_of_date,
-                )
-                .order_by(Membership.id)
+        self,
+        as_of_date: date,
+    ) -> list[Membership]:
+        statement = (
+            select(Membership)
+            .where(
+                Membership.status == MembershipStatus.ACTIVE,
+                Membership.end_date.is_not(None),
+                Membership.end_date <= as_of_date,
             )
+            .order_by(Membership.id)
+        )
 
-            return list(self.session.exec(statement).all())
-
-
+        return list(self.session.exec(statement).all())
 
     def add(
         self,

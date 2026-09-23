@@ -3,7 +3,6 @@ from fastapi.testclient import TestClient
 from app.core.config import settings
 from app.main import app
 
-
 client = TestClient(app)
 
 
@@ -13,18 +12,12 @@ def job_headers() -> dict[str, str]:
     }
 
 
-
 def test_daily_job_rejects_missing_api_key():
-    response = client.post(
-        "/api/v1/jobs/daily"
-    )
+    response = client.post("/api/v1/jobs/daily")
 
     assert response.status_code == 401
 
-    assert response.json() == {
-        "detail": "Invalid job API key"
-    }
-
+    assert response.json() == {"detail": "Invalid job API key"}
 
 
 def test_daily_job_rejects_wrong_api_key():
@@ -36,7 +29,6 @@ def test_daily_job_rejects_wrong_api_key():
     )
 
     assert response.status_code == 401
-
 
 
 def test_daily_job_accepts_valid_api_key():
@@ -55,7 +47,6 @@ def test_daily_job_accepts_valid_api_key():
     }
 
 
-
 def test_daily_job_endpoint_is_idempotent():
     first = client.post(
         "/api/v1/jobs/daily",
@@ -71,8 +62,6 @@ def test_daily_job_endpoint_is_idempotent():
     assert second.status_code == 200
 
     assert second.json()["status"] == "already_run"
-
-
 
     assert first.json()["status"] == "completed"
     assert second.json()["status"] == "already_run"

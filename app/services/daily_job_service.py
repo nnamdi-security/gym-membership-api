@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
@@ -10,7 +10,6 @@ from app.models.reminder import Reminder, ReminderKind
 from app.repositories.job_run_repository import JobRunRepository
 from app.repositories.membership_repository import MembershipRepository
 from app.repositories.reminder_repository import ReminderRepository
-
 
 DAILY_JOB_NAME = "daily_membership_maintenance"
 
@@ -39,11 +38,9 @@ class DailyJobService:
         self,
         run_date: date | None = None,
     ) -> DailyJobResult:
-        effective_date = run_date or date.today()
+        effective_date = run_date or datetime.now(timezone.UTC)
 
-        claimed = self._claim_run(
-            effective_date
-        )
+        claimed = self._claim_run(effective_date)
 
         if not claimed:
             return DailyJobResult(
@@ -56,30 +53,21 @@ class DailyJobService:
         reminder_count = 0
 
         try:
-            expired_memberships = (
-                self.membership_repository.get_active_expired_by(
-                    effective_date
-                )
+            expired_memberships = self.membership_repository.get_active_expired_by(
+                effective_date
             )
 
             for membership in expired_memberships:
                 membership.status = MembershipStatus.EXPIRED
 
-                self.membership_repository.add(
-                    membership
-                )
+                self.membership_repository.add(membership)
 
                 expired_count += 1
 
-            reminder_date = (
-                effective_date
-                + timedelta(days=7)
-            )
+            reminder_date = effective_date + timedelta(days=7)
 
-            expiring_memberships = (
-                self.membership_repository.get_active_expiring_on(
-                    reminder_date
-                )
+            expiring_memberships = self.membership_repository.get_active_expiring_on(
+                reminder_date
             )
 
             for membership in expiring_memberships:
@@ -98,9 +86,7 @@ class DailyJobService:
                     kind=ReminderKind.EXPIRY_7_DAYS,
                 )
 
-                self.reminder_repository.add(
-                    reminder
-                )
+                self.reminder_repository.add(reminder)
 
                 reminder_count += 1
 
@@ -126,9 +112,7 @@ class DailyJobService:
         )
 
         try:
-            self.job_run_repository.add(
-                job_run
-            )
+            self.job_run_repository.add(job_run)
 
             self.session.flush()
 

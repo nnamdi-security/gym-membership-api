@@ -12,9 +12,7 @@ from app.repositories.job_run_repository import (
 def test_create_job_run(
     db_session,
 ):
-    repository = JobRunRepository(
-        db_session
-    )
+    repository = JobRunRepository(db_session)
 
     run = repository.create(
         JobRun(
@@ -35,9 +33,7 @@ def test_create_job_run(
 def test_get_job_run_by_name_and_date(
     db_session,
 ):
-    repository = JobRunRepository(
-        db_session
-    )
+    repository = JobRunRepository(db_session)
 
     created = repository.create(
         JobRun(
@@ -58,9 +54,7 @@ def test_get_job_run_by_name_and_date(
 def test_duplicate_job_run_is_rejected(
     db_session,
 ):
-    repository = JobRunRepository(
-        db_session
-    )
+    repository = JobRunRepository(db_session)
 
     repository.create(
         JobRun(
@@ -75,9 +69,6 @@ def test_duplicate_job_run_is_rejected(
     )
 
     with pytest.raises(IntegrityError):
-        repository.create(
-            duplicate
-        )
+        repository.create(duplicate)
 
     db_session.rollback()
-

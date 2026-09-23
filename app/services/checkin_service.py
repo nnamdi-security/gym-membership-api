@@ -1,4 +1,5 @@
-from datetime import date, datetime, timezone
+import logging
+from datetime import UTC, datetime, timezone
 
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlmodel import Session
@@ -10,21 +11,16 @@ from app.repositories.checkins_repository import CheckinRepository
 from app.repositories.gym_class_repository import GymClassRepository
 from app.repositories.membership_repository import MembershipRepository
 from app.repositories.user import UserRepository
-
-
-import logging
-
+from app.services.activity_feed_projection import (
+    ActivityFeedProjector,
+)
+from app.services.class_board_event_publisher import (
+    ClassBoardEventPublisher,
+)
 from app.services.class_board_projection import (
     ClassBoardProjector,
 )
 
-from app.services.activity_feed_projection import (
-    ActivityFeedProjector,
-)
-
-from app.services.class_board_event_publisher import (
-    ClassBoardEventPublisher,
-)
 
 class GymClassNotFoundError(Exception):
     pass
@@ -73,7 +69,7 @@ class CheckinService:
         self.user_repository = user_repository
         self.class_board_projector = class_board_projector
         self.activity_feed_projector = activity_feed_projector
-        self.class_board_event_publisher = (class_board_event_publisher)
+        self.class_board_event_publisher = class_board_event_publisher
 
     def check_in(
         self,
@@ -81,22 +77,14 @@ class CheckinService:
         class_id: int,
         member_id: int,
     ) -> Checkin:
-        gym_class = (
-            self.gym_class_repository.get_by_id_for_update(
-                class_id
-            )
-        )
+        gym_class = self.gym_class_repository.get_by_id_for_update(class_id)
 
         if gym_class is None:
             raise GymClassNotFoundError
 
-        self._validate_class_time(
-            gym_class.starts_at
-        )
+        self._validate_class_time(gym_class.starts_at)
 
-        member = self.user_repository.get_by_id(
-            member_id
-        )
+        member = self.user_repository.get_by_id(member_id)
 
         if member is None:
             raise MemberNotFoundError
@@ -104,34 +92,22 @@ class CheckinService:
         if member.role != UserRole.MEMBER:
             raise InvalidMemberRoleError
 
-        membership = (
-            self.membership_repository.get_active_for_member(
-                member_id
-            )
-        )
+        membership = self.membership_repository.get_active_for_member(member_id)
 
         if membership is None:
             raise ActiveMembershipRequiredError
 
-        self._validate_membership_entitlement(
-            membership
-        )
+        self._validate_membership_entitlement(membership)
 
-        existing_checkin = (
-            self.checkin_repository.get_by_class_and_member(
-                class_id,
-                member_id,
-            )
+        existing_checkin = self.checkin_repository.get_by_class_and_member(
+            class_id,
+            member_id,
         )
 
         if existing_checkin is not None:
             raise AlreadyCheckedInError
 
-        current_count = (
-            self.gym_class_repository.count_checkins(
-                class_id
-            )
-        )
+        current_count = self.gym_class_repository.count_checkins(class_id)
 
         if current_count >= gym_class.capacity:
             raise GymClassFullError
@@ -142,9 +118,7 @@ class CheckinService:
         )
 
         try:
-            self.checkin_repository.add(
-                checkin
-            )
+            self.checkin_repository.add(checkin)
 
             self.session.commit()
 
@@ -179,7 +153,7 @@ class CheckinService:
         if starts_at.tzinfo is None:
             raise GymClassAlreadyStartedError
 
-        if starts_at <= datetime.now(timezone.utc):
+        if starts_at <= datetime.now(UTC):
             raise GymClassAlreadyStartedError
 
     def _validate_membership_entitlement(
@@ -189,58 +163,37 @@ class CheckinService:
         if membership.status != MembershipStatus.ACTIVE:
             raise ActiveMembershipRequiredError
 
-        if (
-            membership.start_date is None
-            or membership.end_date is None
-        ):
+        if membership.start_date is None or membership.end_date is None:
             raise ActiveMembershipRequiredError
 
-        today = date.today()
+        today = datetime.now(timezone.UTC)
 
-        if not (
-            membership.start_date
-            <= today
-            < membership.end_date
-        ):
+        if not (membership.start_date <= today < membership.end_date):
             raise ActiveMembershipRequiredError
-
-
 
     def get_member_checkins(
         self,
         member_id: int,
     ) -> list[Checkin]:
-        return self.checkin_repository.get_for_member(
-            member_id
-        )
-
+        return self.checkin_repository.get_for_member(member_id)
 
     def get_class_checkins(
         self,
         class_id: int,
     ) -> list[Checkin]:
-        gym_class = self.gym_class_repository.get_by_id(
-            class_id
-        )
+        gym_class = self.gym_class_repository.get_by_id(class_id)
 
         if gym_class is None:
             raise GymClassNotFoundError
 
-        return self.checkin_repository.get_for_class(
-            class_id
-        )
-
-
-
+        return self.checkin_repository.get_for_class(class_id)
 
     def _publish_class_board(
         self,
         payload: dict,
     ) -> None:
         try:
-            self.class_board_projector.publish(
-                **payload
-            )
+            self.class_board_projector.publish(**payload)
 
         except Exception:
             logger.exception(
@@ -254,11 +207,7 @@ class CheckinService:
         self,
         gym_class,
     ) -> dict:
-        checked_in = (
-            self.gym_class_repository.count_checkins(
-                gym_class.id
-            )
-        )
+        checked_in = self.gym_class_repository.count_checkins(gym_class.id)
 
         remaining = max(
             gym_class.capacity - checked_in,
@@ -273,8 +222,7 @@ class CheckinService:
             "checked_in": checked_in,
             "remaining": remaining,
             "full": checked_in >= gym_class.capacity,
-        }    
-
+        }
 
     def _publish_activity(
         self,
@@ -286,10 +234,7 @@ class CheckinService:
             self.activity_feed_projector.publish(
                 event_type="class.checked_in",
                 occurred_at=checkin.checked_in_at,
-                message=(
-                    f"Member {checkin.member_id} "
-                    f"checked into {gym_class.name}"
-                ),
+                message=(f"Member {checkin.member_id} checked into {gym_class.name}"),
                 data={
                     "member_id": checkin.member_id,
                     "class_id": gym_class.id,
@@ -305,18 +250,12 @@ class CheckinService:
                 },
             )
 
-
-
-
-
     def _publish_class_board_event(
         self,
         payload: dict,
     ) -> None:
         try:
-            self.class_board_event_publisher.publish(
-                payload
-            )
+            self.class_board_event_publisher.publish(payload)
 
         except Exception:
             logger.exception(
@@ -326,14 +265,8 @@ class CheckinService:
                 },
             )
 
+
 logger = logging.getLogger(__name__)
-
-
-
-
-
-
-
 
 
 # BEGIN

@@ -20,9 +20,7 @@ class ReminderRepository:
             Reminder.kind == kind,
         )
 
-        return self.session.exec(
-            statement
-        ).first()
+        return self.session.exec(statement).first()
 
     def get_for_membership(
         self,
@@ -30,18 +28,11 @@ class ReminderRepository:
     ) -> list[Reminder]:
         statement = (
             select(Reminder)
-            .where(
-                Reminder.membership_id
-                == membership_id
-            )
+            .where(Reminder.membership_id == membership_id)
             .order_by(Reminder.id)
         )
 
-        return list(
-            self.session.exec(
-                statement
-            ).all()
-        )
+        return list(self.session.exec(statement).all())
 
     def add(
         self,

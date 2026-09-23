@@ -9,9 +9,7 @@ class RedisService:
         self.client = client
 
     def ping(self) -> bool:
-        return bool(
-            self.client.ping()
-        )
+        return bool(self.client.ping())
 
     def set_value(
         self,

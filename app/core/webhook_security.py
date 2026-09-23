@@ -19,4 +19,5 @@ def verify_webhook_signature(
         signature,
     )
 
+
 # hmac.compare_digest(...) is specifically intended for comparing cryptographic values and avoids timing differences associated with ordinary string comparison.

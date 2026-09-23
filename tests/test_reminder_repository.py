@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest
@@ -41,7 +41,7 @@ def create_membership(
     db_session.refresh(member)
     db_session.refresh(plan)
 
-    today = date.today()
+    today = datetime.now(tz=timezone.UTC).date()
 
     membership = Membership(
         member_id=member.id,
@@ -58,18 +58,12 @@ def create_membership(
     return membership
 
 
-
-
 def test_create_reminder(
     db_session,
 ):
-    membership = create_membership(
-        db_session
-    )
+    membership = create_membership(db_session)
 
-    repository = ReminderRepository(
-        db_session
-    )
+    repository = ReminderRepository(db_session)
 
     reminder = repository.create(
         Reminder(
@@ -79,25 +73,15 @@ def test_create_reminder(
     )
 
     assert reminder.id is not None
-    assert (
-        reminder.membership_id
-        == membership.id
-    )
-
-
-
+    assert reminder.membership_id == membership.id
 
 
 def test_get_reminder_for_membership_and_kind(
     db_session,
 ):
-    membership = create_membership(
-        db_session
-    )
+    membership = create_membership(db_session)
 
-    repository = ReminderRepository(
-        db_session
-    )
+    repository = ReminderRepository(db_session)
 
     created = repository.create(
         Reminder(
@@ -106,29 +90,21 @@ def test_get_reminder_for_membership_and_kind(
         )
     )
 
-    found = (
-        repository.get_for_membership_and_kind(
-            membership.id,
-            ReminderKind.EXPIRY_7_DAYS,
-        )
+    found = repository.get_for_membership_and_kind(
+        membership.id,
+        ReminderKind.EXPIRY_7_DAYS,
     )
 
     assert found is not None
     assert found.id == created.id
 
 
-
-
 def test_duplicate_reminder_is_rejected(
     db_session,
 ):
-    membership = create_membership(
-        db_session
-    )
+    membership = create_membership(db_session)
 
-    repository = ReminderRepository(
-        db_session
-    )
+    repository = ReminderRepository(db_session)
 
     repository.create(
         Reminder(
@@ -143,8 +119,6 @@ def test_duplicate_reminder_is_rejected(
     )
 
     with pytest.raises(IntegrityError):
-        repository.create(
-            duplicate
-        )
+        repository.create(duplicate)
 
     db_session.rollback()

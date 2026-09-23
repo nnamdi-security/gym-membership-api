@@ -18,10 +18,7 @@ def sign(
 
 
 def test_valid_webhook_signature_is_accepted():
-    raw_body = (
-        b'{"event_id":"evt_1",'
-        b'"type":"payment.succeeded"}'
-    )
+    raw_body = b'{"event_id":"evt_1","type":"payment.succeeded"}'
 
     signature = sign(raw_body)
 
@@ -32,10 +29,7 @@ def test_valid_webhook_signature_is_accepted():
 
 
 def test_invalid_webhook_signature_is_rejected():
-    raw_body = (
-        b'{"event_id":"evt_1",'
-        b'"type":"payment.succeeded"}'
-    )
+    raw_body = b'{"event_id":"evt_1","type":"payment.succeeded"}'
 
     assert not verify_webhook_signature(
         raw_body,

@@ -10,5 +10,4 @@ class ActivityFeedProjector(Protocol):
         occurred_at: datetime,
         message: str,
         data: dict,
-    ) -> None:
-        ...
+    ) -> None: ...

@@ -9,7 +9,6 @@ from app.repositories.reminder_repository import ReminderRepository
 from app.schemas.job import DailyJobResponse
 from app.services.daily_job_service import DailyJobService
 
-
 router = APIRouter(
     prefix="/jobs",
     tags=["Jobs"],
@@ -18,9 +17,7 @@ router = APIRouter(
 
 SESSION_DEPENDENCY = Depends(get_session)
 
-JOB_API_KEY_DEPENDENCY = Depends(
-    verify_daily_job_api_key
-)
+JOB_API_KEY_DEPENDENCY = Depends(verify_daily_job_api_key)
 
 
 def get_daily_job_service(
@@ -34,11 +31,7 @@ def get_daily_job_service(
     )
 
 
-DAILY_JOB_SERVICE_DEPENDENCY = Depends(
-    get_daily_job_service
-)
-
-
+DAILY_JOB_SERVICE_DEPENDENCY = Depends(get_daily_job_service)
 
 
 # Daily job endpoint

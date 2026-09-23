@@ -54,17 +54,12 @@ def create_membership_fixture(
     return membership
 
 
-
 def test_create_payment(
     db_session,
 ):
-    membership = create_membership_fixture(
-        db_session
-    )
+    membership = create_membership_fixture(db_session)
 
-    repository = PaymentRepository(
-        db_session
-    )
+    repository = PaymentRepository(db_session)
 
     payment = Payment(
         membership_id=membership.id,
@@ -78,36 +73,18 @@ def test_create_payment(
     created = repository.create(payment)
 
     assert created.id is not None
-    assert (
-        created.membership_id
-        == membership.id
-    )
-    assert (
-        created.amount
-        == Decimal("15000.00")
-    )
-    assert (
-        created.status
-        == PaymentStatus.PENDING
-    )
-    assert (
-        created.reference
-        == "FITPRO-TEST-001"
-    )
-
-
+    assert created.membership_id == membership.id
+    assert created.amount == Decimal("15000.00")
+    assert created.status == PaymentStatus.PENDING
+    assert created.reference == "FITPRO-TEST-001"
 
 
 def test_get_payment_by_reference(
     db_session,
 ):
-    membership = create_membership_fixture(
-        db_session
-    )
+    membership = create_membership_fixture(db_session)
 
-    repository = PaymentRepository(
-        db_session
-    )
+    repository = PaymentRepository(db_session)
 
     created = repository.create(
         Payment(
@@ -120,41 +97,28 @@ def test_get_payment_by_reference(
         )
     )
 
-    found = repository.get_by_reference(
-        "FITPRO-TEST-002"
-    )
+    found = repository.get_by_reference("FITPRO-TEST-002")
 
     assert found is not None
     assert found.id == created.id
 
 
-
 def test_get_by_reference_returns_none_when_missing(
     db_session,
 ):
-    repository = PaymentRepository(
-        db_session
-    )
+    repository = PaymentRepository(db_session)
 
-    found = repository.get_by_reference(
-        "DOES-NOT-EXIST"
-    )
+    found = repository.get_by_reference("DOES-NOT-EXIST")
 
     assert found is None
-
-
 
 
 def test_get_for_membership_returns_payment_history(
     db_session,
 ):
-    membership = create_membership_fixture(
-        db_session
-    )
+    membership = create_membership_fixture(db_session)
 
-    repository = PaymentRepository(
-        db_session
-    )
+    repository = PaymentRepository(db_session)
 
     first = repository.create(
         Payment(
@@ -178,26 +142,19 @@ def test_get_for_membership_returns_payment_history(
         )
     )
 
-    payments = repository.get_for_membership(
-        membership.id
-    )
+    payments = repository.get_for_membership(membership.id)
 
     assert len(payments) == 2
     assert payments[0].id == second.id
     assert payments[1].id == first.id
 
 
-
 def test_update_payment(
     db_session,
 ):
-    membership = create_membership_fixture(
-        db_session
-    )
+    membership = create_membership_fixture(db_session)
 
-    repository = PaymentRepository(
-        db_session
-    )
+    repository = PaymentRepository(db_session)
 
     payment = repository.create(
         Payment(
@@ -214,23 +171,15 @@ def test_update_payment(
 
     updated = repository.update(payment)
 
-    assert (
-        updated.status
-        == PaymentStatus.SUCCEEDED
-    )
-
+    assert updated.status == PaymentStatus.SUCCEEDED
 
 
 def test_duplicate_payment_reference_is_rejected(
     db_session,
 ):
-    membership = create_membership_fixture(
-        db_session
-    )
+    membership = create_membership_fixture(db_session)
 
-    repository = PaymentRepository(
-        db_session
-    )
+    repository = PaymentRepository(db_session)
 
     repository.create(
         Payment(

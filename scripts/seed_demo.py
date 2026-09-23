@@ -1,4 +1,4 @@
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 
 from pwdlib import PasswordHash
@@ -11,7 +11,6 @@ from app.models.membership import Membership, MembershipStatus
 from app.models.plan import Plan
 from app.models.user import User, UserRole
 
-
 password_hasher = PasswordHash.recommended()
 
 
@@ -22,20 +21,14 @@ def get_or_create_user(
     email: str,
     role: UserRole,
 ) -> User:
-    existing = session.exec(
-        select(User).where(
-            User.email == email
-        )
-    ).first()
+    existing = session.exec(select(User).where(User.email == email)).first()
 
     if existing is not None:
         return existing
 
     user = User(
         email=email,
-        password_hash=password_hasher.hash(
-            settings.demo_seed_password
-        ),
+        password_hash=password_hasher.hash(settings.demo_seed_password),
         role=role,
     )
 
@@ -45,8 +38,7 @@ def get_or_create_user(
     return user
 
 
-
-#Plan helper function
+# Plan helper function
 def get_or_create_plan(
     session: Session,
     *,
@@ -54,11 +46,7 @@ def get_or_create_plan(
     price: Decimal,
     period_days: int,
 ) -> Plan:
-    existing = session.exec(
-        select(Plan).where(
-            Plan.name == name
-        )
-    ).first()
+    existing = session.exec(select(Plan).where(Plan.name == name)).first()
 
     if existing is not None:
         return existing
@@ -75,21 +63,16 @@ def get_or_create_plan(
     return plan
 
 
-
-
 # Membership helper function
 def membership_exists(
     session: Session,
     member_id: int,
 ) -> bool:
     membership = session.exec(
-        select(Membership).where(
-            Membership.member_id == member_id
-        )
+        select(Membership).where(Membership.member_id == member_id)
     ).first()
 
     return membership is not None
-
 
 
 def seed_memberships(
@@ -100,7 +83,7 @@ def seed_memberships(
     pending_member: User,
     frozen_member: User,
 ) -> None:
-    today = date.today()
+    today = datetime.now(timezone.UTC)
 
     if not membership_exists(
         session,
@@ -124,9 +107,7 @@ def seed_memberships(
             Membership(
                 member_id=pending_member.id,
                 plan_id=monthly_plan.id,
-                status=(
-                    MembershipStatus.PENDING_PAYMENT
-                ),
+                status=(MembershipStatus.PENDING_PAYMENT),
                 start_date=None,
                 end_date=None,
             )
@@ -146,11 +127,6 @@ def seed_memberships(
                 frozen_on=today - timedelta(days=2),
             )
         )
-
-
-
-
-
 
 
 def get_or_create_class(
@@ -182,21 +158,14 @@ def get_or_create_class(
     return gym_class
 
 
-
-
 def future_demo_time(
     *,
     days_from_now: int,
     hour: int,
 ) -> datetime:
-    today = datetime.now(
-        timezone.utc
-    ).date()
+    today = datetime.now(UTC).date()
 
-    target_date = (
-        today
-        + timedelta(days=days_from_now)
-    )
+    target_date = today + timedelta(days=days_from_now)
 
     return datetime(
         target_date.year,
@@ -204,11 +173,8 @@ def future_demo_time(
         target_date.day,
         hour,
         0,
-        tzinfo=timezone.utc,
+        tzinfo=UTC,
     )
-
-
-
 
 
 def seed_classes(
@@ -245,14 +211,13 @@ def seed_classes(
     )
 
 
-
-
 def seed_demo_data() -> None:
     with Session(engine) as session:
         try:
-            get_or_create_user(session,
-            email="admin@fitpro.demo",
-            role=UserRole.ADMIN,
+            get_or_create_user(
+                session,
+                email="admin@fitpro.demo",
+                role=UserRole.ADMIN,
             )
 
             get_or_create_user(
@@ -301,9 +266,7 @@ def seed_demo_data() -> None:
                 frozen_member=frozen_member,
             )
 
-            seed_classes(
-                session
-            )
+            seed_classes(session)
 
             session.commit()
 
