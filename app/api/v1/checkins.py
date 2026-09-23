@@ -28,6 +28,10 @@ from app.services.firestore_class_board import (
     FirestoreClassBoardProjector,
 )
 
+from app.core.class_board_events import (
+    get_class_board_event_publisher,
+)
+
 from app.core.class_board import (
     get_class_board_projector,
 )
@@ -74,6 +78,7 @@ def get_checkin_service(
         user_repository=UserRepository(session),
         class_board_projector=get_class_board_projector(),
         activity_feed_projector=get_activity_feed_projector(),
+         class_board_event_publisher=get_class_board_event_publisher(),
     )
 
 
