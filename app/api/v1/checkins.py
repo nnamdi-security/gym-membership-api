@@ -24,6 +24,15 @@ from app.services.checkin_service import (
     MemberNotFoundError,
 )
 
+from app.services.firestore_class_board import (
+    FirestoreClassBoardProjector,
+)
+
+from app.core.class_board import (
+    get_class_board_projector,
+)
+
+class_board_projector=get_class_board_projector(),
 
 router = APIRouter(
     prefix="/checkins",
@@ -57,6 +66,7 @@ def get_checkin_service(
         gym_class_repository=GymClassRepository(session),
         membership_repository=MembershipRepository(session),
         user_repository=UserRepository(session),
+        class_board_projector=FirestoreClassBoardProjector(),
     )
 
 

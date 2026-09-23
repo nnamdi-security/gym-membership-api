@@ -12,6 +12,13 @@ from app.repositories.membership_repository import MembershipRepository
 from app.repositories.user import UserRepository
 
 
+import logging
+
+from app.services.class_board_projection import (
+    ClassBoardProjector,
+)
+
+
 class GymClassNotFoundError(Exception):
     pass
 
@@ -48,12 +55,14 @@ class CheckinService:
         gym_class_repository: GymClassRepository,
         membership_repository: MembershipRepository,
         user_repository: UserRepository,
+        class_board_projector: ClassBoardProjector,
     ):
         self.session = session
         self.checkin_repository = checkin_repository
         self.gym_class_repository = gym_class_repository
         self.membership_repository = membership_repository
         self.user_repository = user_repository
+        self.class_board_projector = class_board_projector
 
     def check_in(
         self,
@@ -138,6 +147,8 @@ class CheckinService:
 
         self.session.refresh(checkin)
 
+        self._publish_class_board(gym_class)
+
         return checkin
 
     def _validate_class_time(
@@ -200,6 +211,47 @@ class CheckinService:
 
 
 
+
+    def _publish_class_board(
+        self,
+        gym_class,
+    ) -> None:
+        checked_in = (
+            self.gym_class_repository.count_checkins(
+                gym_class.id
+            )
+        )
+
+        remaining = max(
+            gym_class.capacity - checked_in,
+            0,
+        )
+
+        try:
+            self.class_board_projector.publish(
+                class_id=gym_class.id,
+                name=gym_class.name,
+                starts_at=gym_class.starts_at,
+                capacity=gym_class.capacity,
+                checked_in=checked_in,
+                remaining=remaining,
+                full=(
+                    checked_in
+                    >= gym_class.capacity
+                ),
+            )
+
+        except Exception:
+            logger.exception(
+                "Failed to publish Firestore class board",
+                extra={
+                    "class_id": gym_class.id,
+                },
+            )
+
+
+
+logger = logging.getLogger(__name__)
 
 
 

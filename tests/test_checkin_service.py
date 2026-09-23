@@ -115,6 +115,17 @@ def build_service():
     membership_repository = FakeMembershipRepository()
     user_repository = FakeUserRepository()
 
+    projector = FakeClassBoardProjector()
+
+    service = CheckinService(
+        session=FakeSession(),
+        checkin_repository=checkin_repository,
+        gym_class_repository=gym_class_repository,
+        membership_repository=membership_repository,
+        user_repository=user_repository,
+        class_board_projector=projector,
+    )
+
     member = User(
         id=1,
         email="member@example.com",
@@ -294,31 +305,6 @@ def test_checkin_rejects_expired_active_membership():
 
 
 
-def test_checkin_rejects_expired_active_membership():
-    (
-        service,
-        _,
-        _,
-        membership_repository,
-        _,
-    ) = build_service()
-
-    membership = (
-        membership_repository.memberships[1]
-    )
-
-    membership.end_date = date.today()
-
-    with pytest.raises(
-        ActiveMembershipRequiredError
-    ):
-        service.check_in(
-            class_id=1,
-            member_id=1,
-        )
-
-
-
 
 def test_member_cannot_check_in_twice():
     (
@@ -366,3 +352,84 @@ def test_checkin_rejects_started_class():
             class_id=1,
             member_id=1,
         )
+
+
+
+
+class FakeClassBoardProjector:
+    def __init__(self):
+        self.payloads = []
+
+    def publish(
+        self,
+        **kwargs,
+    ):
+        self.payloads.append(kwargs)
+
+
+
+
+
+def test_successful_checkin_publishes_class_board():
+    (
+        service,
+        class_repository,
+        checkin_repository,
+        _,
+        _,
+        projector,
+    ) = build_service()
+
+    checkin_repository.checkins = []
+
+    service.check_in(
+        class_id=1,
+        member_id=1,
+    )
+
+    assert len(projector.payloads) == 1
+
+    payload = projector.payloads[0]
+
+    assert payload["class_id"] == 1
+    assert payload["capacity"] == 12
+    assert payload["checked_in"] == 1
+    assert payload["remaining"] == 11
+    assert payload["full"] is False
+
+
+
+
+class FailingClassBoardProjector:
+    def publish(
+        self,
+        **kwargs,
+    ):
+        raise RuntimeError(
+            "Firestore unavailable"
+        )
+
+
+
+
+
+def test_firestore_failure_does_not_undo_checkin():
+    (
+        service,
+        _,
+        _,
+        _,
+        _,
+        _,
+    ) = build_service()
+
+    service.class_board_projector = (
+        FailingClassBoardProjector()
+    )
+
+    checkin = service.check_in(
+        class_id=1,
+        member_id=1,
+    )
+
+    assert checkin.id is not None
