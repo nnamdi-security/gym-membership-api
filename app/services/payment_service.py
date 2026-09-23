@@ -62,6 +62,7 @@ class PaymentService:
         plan_repository: PlanRepository,
         user_repository: UserRepository,
         payment_provider: PaymentProvider,
+        activity_feed_projector
     ):
         self.session = session
         self.payment_repository = payment_repository
@@ -69,6 +70,7 @@ class PaymentService:
         self.plan_repository = plan_repository
         self.user_repository = user_repository
         self.payment_provider = payment_provider
+        self.activity_feed_projector = activity_feed_projector
 
     def get_payment(
         self,
@@ -173,6 +175,10 @@ class PaymentService:
 
         self.session.refresh(payment)
         self.session.refresh(membership)
+        self._publish_membership_activation(
+        payment=payment,
+        membership=membership,
+    )
 
         return payment
 
@@ -252,3 +258,34 @@ class PaymentService:
 
     def _generate_reference(self) -> str:
         return f"FITPRO-{token_urlsafe(16)}"
+
+
+    def _publish_membership_activation(
+        self,
+        *,
+        payment: Payment,
+        membership,
+    ) -> None:
+        try:
+            self.activity_feed_projector.publish(
+                event_type="membership.activated",
+                occurred_at=payment.paid_at,
+                message=(
+                    f"Membership {membership.id} "
+                    "was activated"
+                ),
+                data={
+                    "membership_id": membership.id,
+                    "payment_id": payment.id,
+                    "member_id": membership.member_id,
+                },
+            )
+
+        except Exception:
+            logger.exception(
+                "Failed to publish membership activation event",
+                extra={
+                    "membership_id": membership.id,
+                    "payment_id": payment.id,
+                },
+            )

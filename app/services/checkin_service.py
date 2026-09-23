@@ -18,6 +18,10 @@ from app.services.class_board_projection import (
     ClassBoardProjector,
 )
 
+from app.services.activity_feed_projection import (
+    ActivityFeedProjector,
+)
+
 
 class GymClassNotFoundError(Exception):
     pass
@@ -56,6 +60,7 @@ class CheckinService:
         membership_repository: MembershipRepository,
         user_repository: UserRepository,
         class_board_projector: ClassBoardProjector,
+        activity_feed_projector: ActivityFeedProjector,
     ):
         self.session = session
         self.checkin_repository = checkin_repository
@@ -63,6 +68,7 @@ class CheckinService:
         self.membership_repository = membership_repository
         self.user_repository = user_repository
         self.class_board_projector = class_board_projector
+        self.activity_feed_projector = activity_feed_projector
 
     def check_in(
         self,
@@ -148,6 +154,9 @@ class CheckinService:
         self.session.refresh(checkin)
 
         self._publish_class_board(gym_class)
+
+        self._publish_activity(
+        checkin=checkin, gym_class=gym_class)
 
         return checkin
 
@@ -250,6 +259,35 @@ class CheckinService:
             )
 
 
+
+    def _publish_activity(
+        self,
+        *,
+        checkin: Checkin,
+        gym_class,
+    ) -> None:
+        try:
+            self.activity_feed_projector.publish(
+                event_type="class.checked_in",
+                occurred_at=checkin.checked_in_at,
+                message=(
+                    f"Member {checkin.member_id} "
+                    f"checked into {gym_class.name}"
+                ),
+                data={
+                    "member_id": checkin.member_id,
+                    "class_id": gym_class.id,
+                },
+            )
+
+        except Exception:
+            logger.exception(
+                "Failed to publish activity feed event",
+                extra={
+                    "class_id": gym_class.id,
+                    "member_id": checkin.member_id,
+                },
+            )
 
 logger = logging.getLogger(__name__)
 
