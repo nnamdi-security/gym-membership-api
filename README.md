@@ -1,4 +1,4 @@
-# FitPro — Gym Membership & Classes
+# FitPro — Gym Membership & Classes  |  [![wakatime](https://wakatime.com/badge/user/55f2e7d8-e681-415e-ba87-93dc727f5023/project/9f3b2bb3-b709-4faf-b0f0-5967bf8e3a23.svg)](https://wakatime.com/badge/user/55f2e7d8-e681-415e-ba87-93dc727f5023/project/9f3b2bb3-b709-4faf-b0f0-5967bf8e3a23)
 
 FitPro is the backend capstone project for Team Emerald Wave.
 
