@@ -19,6 +19,8 @@ class Settings(BaseSettings):
 
     firestore_project_id: str | None = None
 
+    demo_seed_password: str = "FitProDemo123!"
+
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="ignore"
     )
