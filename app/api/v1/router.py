@@ -13,9 +13,9 @@ from app.api.v1.jobs import router as jobs_router
 api_router = APIRouter()
 
 api_router.include_router(auth_router)
+api_router.include_router(memberships_router)
 api_router.include_router(plans_router)
 api_router.include_router(webhooks_router)
-api_router.include_router(memberships_router)
 api_router.include_router(payments_router)
 api_router.include_router(classes_router)
 api_router.include_router(checkins_router)

@@ -82,15 +82,18 @@ Day 2 will set up the actual backend project:
 
 ### Who did what
 
-Michael:
-- [Fill in the parts you personally handled.]
+Nnamdi:
+- Led the walkthrough of the brief and proposed the first draft of the nine-table ERD.
+- Identified the unique constraints and indexes needed to back the daily-job and webhook idempotency rules.
 
-Partner:
-- [Fill in the parts your partner personally handled.]
+Stephanie:
+- Reviewed the ERD table by table and worked through the relationships (foreign keys, one-to-many vs many-to-many) to confirm the design made sense.
+- Helped reason through why check-ins needed their own join table instead of being folded into memberships or classes.
 
 Shared:
 - Reviewed the ERD and project requirements together.
 - Discussed the system entities and relationships.
+- Prepared the handwritten design and presented it for instructor sign-off.
 
 ---
 
@@ -217,11 +220,14 @@ Day 3 will implement authentication and authorization:
 
 ### Who did what
 
-Michael:
-- [Fill in your actual work.]
+Nnamdi:
+- Bootstrapped the FastAPI project structure, `Dockerfile`, `docker-compose.yml`, and `pyproject.toml`/dependency setup.
+- Set up `alembic.ini`, `alembic/env.py`, and generated and fixed the first migration, including the enum downgrade issue.
+- Wired up GitHub Actions CI to run migrations and pytest on every push.
 
-Partner:
-- [Fill in your partner's actual work.]
+Stephanie:
+- Built `app/db/session.py` (the SQLAlchemy engine and session dependency) and verified the app could connect to PostgreSQL with a real `SELECT 1` check.
+- Debugged and fixed local Docker/Postgres connection issues (stale volumes, `localhost` vs container hostnames) while getting the environment running end to end.
 
 Shared:
 - Reviewed Docker and database setup.
@@ -355,11 +361,13 @@ Day 4 will implement the gym membership business domain:
 
 ### Who did what
 
-Michael:
-- [Fill in your actual work.]
+Nnamdi:
+- Implemented Argon2 password hashing and JWT creation/validation in `core/security.py`.
+- Built the `AuthService` (duplicate-email checks, authentication, JWT generation) and the `get_current_user` / `require_roles` dependencies for role-based authorization.
 
-Partner:
-- [Fill in your partner's actual work.]
+Stephanie:
+- Built the authentication request/response schemas (register, login, token, safe user response) and the `UserRepository` (`get_by_email`, `get_by_id`, `create`), including repository-level tests.
+- Implemented the `POST /auth/register` and `POST /auth/login` endpoints, and tested 401/403 behavior across the protected routes.
 
 Shared:
 - Reviewed authentication flow and role behavior.
@@ -532,11 +540,13 @@ Day 5 will implement payments and membership activation:
 
 ### Who did what
 
-Michael:
-- [Fill in your actual work.]
+Nnamdi:
+- Implemented membership-plan schemas, repository, service and the full Plan CRUD API with ADMIN-only write access, plus the rule blocking deletion of a plan already referenced by a membership.
+- Diagnosed and fixed the dangerous Alembic autogenerate issue caused by the `SQLModel.metadata` mismatch, and hand-wrote the enum migration for the refined membership-status lifecycle.
 
-Partner:
-- [Fill in your partner's actual work.]
+Stephanie:
+- Implemented the membership schemas, repository and service, including the subscribe date-math (`end_date = start_date + plan.period_days`) and the freeze/unfreeze logic that extends `end_date` by the frozen duration.
+- Built the member-facing and staff-facing membership endpoints with the correct role and ownership rules (members see only their own membership; staff can freeze/unfreeze any membership), and wrote the membership service-level tests.
 
 Shared:
 - Reviewed the gym membership business flow.
@@ -730,10 +740,13 @@ After classes/check-ins, we still need to implement the daily membership job and
 ### Who did what
 
 Nnamdi:
-- [Fill in your actual work.]
+- Refined the Payment model and schemas, wrote the third Alembic migration, and implemented the `PaymentRepository`, `PaymentService`, and the staff/offline payment endpoint with atomic payment-and-membership-activation in one transaction.
+- Implemented online-payment initialization, the payment-provider abstraction and fake provider, and the full webhook flow (signature validation, `WebhookService`, row locking, amount/currency verification, orphan handling).
+- Diagnosed and fixed the `WEBHOOK_SECRET` mismatch that was causing every mock-provider request to fail signature validation, and cleaned up the duplicated/misplaced code between `payments.py` and `payment_service.py`.
 
 Stephanie:
-- [Fill in your partner's actual work.]
+- Built and tested a first version of the payment webhook (HMAC signature verification and `processed_events` idempotency) independently, then reconciled it against Nnamdi's completed `WebhookService` implementation once both were compared, keeping the more complete version.
+- Added `scripts/mock_payment_provider.py` to the repo for repeatable local testing, worked through the local Postgres/environment issues blocking end-to-end webhook testing, and prepared the Postman collection and test flow used to demonstrate the full payment journey (subscribe → staff payment → online payment → webhook) for review.
 
 Shared:
 - Reviewed payment and webhook design.
