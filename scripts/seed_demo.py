@@ -83,7 +83,7 @@ def seed_memberships(
     pending_member: User,
     frozen_member: User,
 ) -> None:
-    today = datetime.now(timezone.UTC)
+    today = datetime.now(timezone.utc)  # noqa: UP017
 
     if not membership_exists(
         session,

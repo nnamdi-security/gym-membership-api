@@ -21,9 +21,8 @@ from app.schemas.gym_class import (
 from app.services.class_board_event_publisher import (
     ClassBoardEventPublisher,
 )
-from app.services.class_board_projection import (
-    ClassBoardProjector,
-)
+
+#from app.services.class_board_projection import ClassBoardProjector
 
 logger = logging.getLogger(__name__)
 
@@ -48,11 +47,11 @@ class GymClassService:
     def __init__(
         self,
         repository: GymClassRepository,
-        class_board_projector: ClassBoardProjector,
+        # class_board_projector: ClassBoardProjector,
         class_board_event_publisher: ClassBoardEventPublisher,
     ):
         self.repository = repository
-        self.class_board_projector = class_board_projector
+        # self.class_board_projector = class_board_projector
         self.class_board_event_publisher = class_board_event_publisher
 
     def list_classes(
