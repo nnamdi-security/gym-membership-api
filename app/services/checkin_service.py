@@ -6,10 +6,10 @@ from sqlmodel import Session
 from app.models.checkin import Checkin
 from app.models.membership import MembershipStatus
 from app.models.user import UserRole
-from app.repositories.checkin_repository import CheckinRepository
+from app.repositories.checkins_repository import CheckinRepository
 from app.repositories.gym_class_repository import GymClassRepository
 from app.repositories.membership_repository import MembershipRepository
-from app.repositories.user_repository import UserRepository
+from app.repositories.user import UserRepository
 
 
 class GymClassNotFoundError(Exception):
