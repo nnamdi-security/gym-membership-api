@@ -10,6 +10,9 @@ from app.api.v1.classes import router as classes_router
 from app.api.v1.checkins import router as checkins_router
 from app.api.v1.jobs import router as jobs_router
 
+from app.core.redis import get_redis
+from app.services.redis_service import RedisService
+
 api_router = APIRouter()
 
 api_router.include_router(auth_router)
@@ -45,4 +48,31 @@ def database_health_check():
     return {
         "status": "ok",
         "database": "postgresql",
+    }
+
+
+
+
+@api_router.get(
+    "/health/redis",
+    tags=["System"],
+    summary="Check Redis connectivity",
+)
+def redis_health_check():
+    try:
+        service = RedisService(
+            get_redis()
+        )
+
+        service.ping()
+
+    except Exception: # noqa: BLE001
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Redis is unavailable",
+        ) from None
+
+    return {
+        "status": "ok",
+        "redis": "available",
     }
