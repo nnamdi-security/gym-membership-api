@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     daily_job_api_key: str
     webhook_secret: str
 
+    firestore_enabled: bool = False
     firestore_project_id: str | None = None
 
     demo_seed_password: str = "FitProDemo123!"

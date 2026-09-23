@@ -53,7 +53,6 @@ def get_gym_class_service(
 
     return GymClassService(
         repository=repository,
-        class_board_projector=get_class_board_projector(),
         class_board_event_publisher=(
             get_class_board_event_publisher()
         ),
