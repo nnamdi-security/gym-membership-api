@@ -14,7 +14,7 @@ from app.models.user import User, UserRole
 from app.repositories.checkins_repository import CheckinRepository
 from app.repositories.gym_class_repository import GymClassRepository
 from app.repositories.membership_repository import MembershipRepository
-from app.repositories.user import UserRepository
+from app.repositories.user_repository import UserRepository
 from app.services.checkin_service import CheckinService
 from app.schemas.checkin import (
     CheckinCreateRequest,

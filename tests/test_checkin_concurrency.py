@@ -15,7 +15,7 @@ from app.models.user import User, UserRole
 from app.repositories.checkins_repository import CheckinRepository
 from app.repositories.gym_class_repository import GymClassRepository
 from app.repositories.membership_repository import MembershipRepository
-from app.repositories.user import UserRepository
+from app.repositories.user_repository import UserRepository
 from app.services.checkin_service import (
     CheckinService,
     GymClassFullError,
@@ -77,7 +77,7 @@ def prepare_nearly_full_class() -> tuple[int, int, int]:
         session.refresh(first_contender)
         session.refresh(second_contender)
 
-        today = datetime.now(timezone.UTC)
+        today = datetime.now(timezone.utc)
         first_membership = Membership(
             member_id=first_contender.id,
             plan_id=plan.id,
@@ -129,6 +129,7 @@ def attempt_checkin(
             gym_class_repository=GymClassRepository(session),
             membership_repository=MembershipRepository(session),
             user_repository=UserRepository(session),
+            
         )
 
         barrier.wait()

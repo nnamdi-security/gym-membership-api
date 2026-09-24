@@ -4,7 +4,7 @@ from app.models.membership import Membership, MembershipStatus
 from app.models.user import UserRole
 from app.repositories.membership_repository import MembershipRepository
 from app.repositories.plan_repository import PlanRepository
-from app.repositories.user import UserRepository
+from app.repositories.user_repository import UserRepository
 from app.schemas.membership import (
     MembershipCreateForMemberRequest,
     MembershipCreateRequest,
@@ -111,12 +111,12 @@ class MembershipService:
         if plan is None:
             raise PlanNotFoundError
 
-        start_date = activation_date or datetime.now(timezone.UTC).date()
+        start_date = activation_date or datetime.now(timezone.utc).date()
 
         membership.start_date = start_date
         membership.end_date = start_date + timedelta(days=plan.period_days)
         membership.status = MembershipStatus.ACTIVE
-        membership.updated_at = datetime.now(timezone.UTC)
+        membership.updated_at = datetime.now(timezone.utc)
 
         return self.membership_repository.update(membership)
 
@@ -179,7 +179,7 @@ class MembershipService:
         if membership.start_date is None or membership.end_date is None:
             raise MembershipCannotBeFrozenError
 
-        effective_date = freeze_date or datetime.now(timezone.UTC)
+        effective_date = freeze_date or datetime.now(timezone.utc).date()
 
         if effective_date < membership.start_date:
             raise MembershipCannotBeFrozenError
@@ -209,7 +209,7 @@ class MembershipService:
         if membership.end_date is None:
             raise MembershipCannotBeUnfrozenError
 
-        effective_date = unfreeze_date or datetime.now(timezone.UTC)
+        effective_date = unfreeze_date or datetime.now(timezone.utc).date()
 
         if effective_date < membership.frozen_on:
             raise MembershipCannotBeUnfrozenError

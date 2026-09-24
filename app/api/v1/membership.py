@@ -6,7 +6,7 @@ from app.db.session import get_session
 from app.models.user import User, UserRole
 from app.repositories.membership_repository import MembershipRepository
 from app.repositories.plan_repository import PlanRepository
-from app.repositories.user import UserRepository
+from app.repositories.user_repository import UserRepository
 from app.schemas.membership import (
     MembershipCreateForMemberRequest,
     MembershipCreateRequest,

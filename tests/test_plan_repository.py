@@ -155,8 +155,8 @@ def test_has_memberships_returns_true_for_used_plan(
     membership = Membership(
         member_id=member.id,
         plan_id=plan.id,
-        start_date=datetime.now(timezone.UTC).date(),
-        end_date=datetime.now(timezone.UTC).date() + timedelta(days=30),
+        start_date=datetime.now(timezone.utc).date(),
+        end_date=datetime.now(timezone.utc).date() + timedelta(days=30),
         status=MembershipStatus.ACTIVE,
     )
 

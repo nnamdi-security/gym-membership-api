@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 
 from fastapi.testclient import TestClient
@@ -74,7 +74,7 @@ def create_future_class(
             name="Spin",
             capacity=capacity,
             starts_at=(
-                datetime.now(UTC)
+                datetime.now(timezone.utc)  # noqa: UP017
                 + timedelta(hours=2)
             ),
         )

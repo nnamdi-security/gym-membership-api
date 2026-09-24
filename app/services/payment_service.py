@@ -1,19 +1,21 @@
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta,timezone
 from secrets import token_urlsafe
-
+import logging
 from sqlalchemy.exc import SQLAlchemyError
 from sqlmodel import Session
 
-from app.models.membership import MembershipStatus
+from app.models.membership import MembershipStatus, Membership
 from app.models.payment import Payment, PaymentMethod, PaymentStatus
 from app.repositories.membership_repository import MembershipRepository
 from app.repositories.payment_repository import PaymentRepository
 from app.repositories.plan_repository import PlanRepository
-from app.repositories.user import UserRepository
+from app.repositories.user_repository import UserRepository
 from app.schemas.payment import StaffPaymentRequest
 from app.services.payment_provider import PaymentProvider
 
+
+logger = logging.getLogger(__name__)
 
 class PaymentNotFoundError(Exception):
     pass
@@ -222,29 +224,29 @@ class PaymentService:
     def _generate_reference(self) -> str:
         return f"FITPRO-{token_urlsafe(16)}"
 
-    # def _publish_membership_activation(
-    #     self,
-    #     *,
-    #     payment: Payment,
-    #     membership,
-    # ) -> None:
-    #     try:
-    #         self.activity_feed_projector.publish(
-    #             event_type="membership.activated",
-    #             occurred_at=payment.paid_at,
-    #             message=(f"Membership {membership.id} was activated"),
-    #             data={
-    #                 "membership_id": membership.id,
-    #                 "payment_id": payment.id,
-    #                 "member_id": membership.member_id,
-    #             },
-    #         )
+    def _publish_membership_activation(
+        self,
+        *,
+        payment: Payment,
+        membership,
+    ) -> None:
+        try:
+            self.activity_feed_projector.publish(
+                event_type="membership.activated",
+                occurred_at=payment.paid_at,
+                message=(f"Membership {membership.id} was activated"),
+                data={
+                    "membership_id": membership.id,
+                    "payment_id": payment.id,
+                    "member_id": membership.member_id,
+                },
+            )
 
-    #     except Exception:
-    #         logger.exception(
-    #             "Failed to publish membership activation event",
-    #             extra={
-    #                 "membership_id": membership.id,
-    #                 "payment_id": payment.id,
-    #             },
-    #         )
+        except Exception:
+            logger.exception(
+                "Failed to publish membership activation event",
+                extra={
+                    "membership_id": membership.id,
+                    "payment_id": payment.id,
+                },
+            )

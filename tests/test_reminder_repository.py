@@ -41,7 +41,7 @@ def create_membership(
     db_session.refresh(member)
     db_session.refresh(plan)
 
-    today = datetime.now(tz=timezone.UTC).date()
+    today = datetime.now(tz=timezone.utc).date()
 
     membership = Membership(
         member_id=member.id,

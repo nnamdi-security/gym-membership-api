@@ -204,7 +204,7 @@ def test_get_active_expired_by_returns_due_memberships(
 
     repository = MembershipRepository(db_session)
 
-    today = datetime.now(tz=timezone.UTC).date()
+    today = datetime.now(tz=timezone.utc).date()
 
     expired_due = repository.create(
         Membership(
@@ -228,7 +228,7 @@ def test_get_active_expired_by_ignores_future_membership(
 
     repository = MembershipRepository(db_session)
 
-    today = datetime.now(tz=timezone.UTC).date()
+    today = datetime.now(tz=timezone.utc).date()
 
     repository.create(
         Membership(
@@ -252,7 +252,7 @@ def test_get_active_expired_by_ignores_frozen_membership(
 
     repository = MembershipRepository(db_session)
 
-    today = datetime.now(tz=timezone.UTC).date()
+    today = datetime.now(tz=timezone.utc).date()
 
     repository.create(
         Membership(
@@ -277,7 +277,7 @@ def test_get_active_expiring_on_returns_exact_date(
 
     repository = MembershipRepository(db_session)
 
-    today = datetime.now(tz=timezone.UTC).date()
+    today = datetime.now(tz=timezone.utc).date()
     reminder_date = today + timedelta(days=7)
 
     due = repository.create(

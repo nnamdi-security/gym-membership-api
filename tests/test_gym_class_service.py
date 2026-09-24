@@ -1,4 +1,5 @@
 from datetime import UTC, datetime, timedelta
+from app.services.noop_class_board_events import NoOpClassBoardEventPublisher
 
 import pytest
 
@@ -67,7 +68,9 @@ class FakeGymClassRepository:
 
 def test_create_future_class():
     repository = FakeGymClassRepository()
-    service = GymClassService(repository)
+    service = GymClassService(
+        repository, 
+        class_board_event_publisher=NoOpClassBoardEventPublisher)
 
     starts_at = datetime.now(UTC) + timedelta(days=1)
 
@@ -86,7 +89,10 @@ def test_create_future_class():
 
 def test_create_rejects_class_in_past():
     repository = FakeGymClassRepository()
-    service = GymClassService(repository)
+    service = GymClassService(
+        repository,
+        class_board_event_publisher=NoOpClassBoardEventPublisher
+        )
 
     with pytest.raises(GymClassStartsInPastError):
         service.create_class(
@@ -100,7 +106,10 @@ def test_create_rejects_class_in_past():
 
 def test_get_class_raises_when_missing():
     repository = FakeGymClassRepository()
-    service = GymClassService(repository)
+    service = GymClassService(
+        repository,
+        class_board_event_publisher=NoOpClassBoardEventPublisher
+        )
 
     with pytest.raises(GymClassNotFoundError):
         service.get_class(999)
@@ -108,7 +117,10 @@ def test_get_class_raises_when_missing():
 
 def test_update_class_changes_only_supplied_fields():
     repository = FakeGymClassRepository()
-    service = GymClassService(repository)
+    service = GymClassService(
+        repository,
+        class_board_event_publisher=NoOpClassBoardEventPublisher
+        )
 
     gym_class = service.create_class(
         GymClassCreateRequest(
@@ -131,7 +143,10 @@ def test_update_class_changes_only_supplied_fields():
 
 def test_update_rejects_capacity_below_checkin_count():
     repository = FakeGymClassRepository()
-    service = GymClassService(repository)
+    service = GymClassService(
+        repository,
+        class_board_event_publisher=NoOpClassBoardEventPublisher
+        )
 
     gym_class = service.create_class(
         GymClassCreateRequest(
@@ -154,7 +169,10 @@ def test_update_rejects_capacity_below_checkin_count():
 
 def test_update_allows_capacity_equal_to_attendance():
     repository = FakeGymClassRepository()
-    service = GymClassService(repository)
+    service = GymClassService(
+        repository,
+        class_board_event_publisher=NoOpClassBoardEventPublisher
+        )
 
     gym_class = service.create_class(
         GymClassCreateRequest(
@@ -178,7 +196,10 @@ def test_update_allows_capacity_equal_to_attendance():
 
 def test_delete_unused_class():
     repository = FakeGymClassRepository()
-    service = GymClassService(repository)
+    service = GymClassService(
+        repository,
+        class_board_event_publisher=NoOpClassBoardEventPublisher
+        )
 
     gym_class = service.create_class(
         GymClassCreateRequest(
@@ -195,7 +216,10 @@ def test_delete_unused_class():
 
 def test_delete_rejects_class_with_checkins():
     repository = FakeGymClassRepository()
-    service = GymClassService(repository)
+    service = GymClassService(
+        repository,
+        class_board_event_publisher=NoOpClassBoardEventPublisher
+        )
 
     gym_class = service.create_class(
         GymClassCreateRequest(
@@ -211,7 +235,7 @@ def test_delete_rejects_class_with_checkins():
         service.delete_class(gym_class.id)
 
 
-def _validate_future_datetime(
+def validate_future_datetime(
     self,
     starts_at: datetime,
 ) -> None:
@@ -224,7 +248,10 @@ def _validate_future_datetime(
 
 def test_get_class_board_returns_capacity_summary():
     repository = FakeGymClassRepository()
-    service = GymClassService(repository)
+    service = GymClassService(
+        repository,
+        class_board_event_publisher=NoOpClassBoardEventPublisher
+        )
 
     gym_class = service.create_class(
         GymClassCreateRequest(
@@ -246,7 +273,10 @@ def test_get_class_board_returns_capacity_summary():
 
 def test_get_class_board_marks_full_class():
     repository = FakeGymClassRepository()
-    service = GymClassService(repository)
+    service = GymClassService(
+        repository,
+        class_board_event_publisher=NoOpClassBoardEventPublisher
+        )
 
     gym_class = service.create_class(
         GymClassCreateRequest(
