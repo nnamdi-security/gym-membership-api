@@ -1,4 +1,4 @@
-fastapi
+fastapi[standard]
 uvicorn[standard]
 sqlmodel
 psycopg[binary]
@@ -6,8 +6,10 @@ alembic
 pydantic-settings
 redis
 python-jose[cryptography]
-passlib[bcrypt]
+pwdlib[argon2]
 python-multipart
 httpx
 pytest
 pytest-asyncio
+email-validator
+google-cloud-firestore

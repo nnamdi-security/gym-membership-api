@@ -1,13 +1,12 @@
 from functools import lru_cache
-from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     app_name: str = "FitPro API"
     app_env: str = "developement"
-    debug: bool =False
-
+    debug: bool = False
 
     database_url: str
     redis_url: str
@@ -18,11 +17,13 @@ class Settings(BaseSettings):
     daily_job_api_key: str
     webhook_secret: str
 
+    firestore_enabled: bool = False
+    firestore_project_id: str | None = None
+
+    demo_seed_password: str = "FitProDemo123!"
+
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False,
-        extra="ignore"
+        env_file=".env", env_file_encoding="utf-8", case_sensitive=False, extra="ignore"
     )
 
 
@@ -30,4 +31,5 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     return Settings()
 
-Settings = get_settings()
+
+settings = get_settings()
