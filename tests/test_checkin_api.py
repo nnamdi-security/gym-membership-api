@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 from fastapi.testclient import TestClient
@@ -11,6 +11,7 @@ from app.models.gym_class import GymClass
 from app.models.membership import Membership, MembershipStatus
 from app.models.plan import Plan
 from app.models.user import User, UserRole
+
 
 client = TestClient(app)
 
@@ -26,6 +27,7 @@ def create_user(
             password_hash=hash_password(password),
             role=role,
         )
+
         session.add(user)
         session.commit()
         session.refresh(user)
@@ -38,7 +40,7 @@ def create_active_membership(
 ) -> Membership:
     with Session(engine) as session:
         plan = Plan(
-            name="Monthly",
+            name=f"Monthly-{member.id}",
             price=Decimal("15000.00"),
             period_days=30,
         )
@@ -47,12 +49,14 @@ def create_active_membership(
         session.commit()
         session.refresh(plan)
 
+        today = date.today()  # noqa: DTZ011
+
         membership = Membership(
             member_id=member.id,
             plan_id=plan.id,
             status=MembershipStatus.ACTIVE,
-            start_date=datetime.now(timezone.UTC) - timedelta(days=1),
-            end_date=datetime.now(timezone.UTC) + timedelta(days=29),
+            start_date=today - timedelta(days=1),
+            end_date=today + timedelta(days=29),
         )
 
         session.add(membership)
@@ -69,7 +73,10 @@ def create_future_class(
         gym_class = GymClass(
             name="Spin",
             capacity=capacity,
-            starts_at=(datetime.now(UTC) + timedelta(hours=2)),
+            starts_at=(
+                datetime.now(UTC)
+                + timedelta(hours=2)
+            ),
         )
 
         session.add(gym_class)
@@ -160,6 +167,7 @@ def test_member_cannot_check_in_twice():
     )
 
     create_active_membership(member)
+
     gym_class = create_future_class()
 
     token = login(member.email)
@@ -184,8 +192,6 @@ def test_member_cannot_check_in_twice():
     assert second.status_code == 409
 
 
-
-
 def test_second_member_cannot_enter_full_class():
     first_member = create_user(
         email="one@example.com",
@@ -200,10 +206,17 @@ def test_second_member_cannot_enter_full_class():
     create_active_membership(first_member)
     create_active_membership(second_member)
 
-    gym_class = create_future_class(capacity=1)
+    gym_class = create_future_class(
+        capacity=1
+    )
 
-    first_token = login(first_member.email)
-    second_token = login(second_member.email)
+    first_token = login(
+        first_member.email
+    )
+
+    second_token = login(
+        second_member.email
+    )
 
     first = client.post(
         "/api/v1/checkins",
@@ -224,7 +237,9 @@ def test_second_member_cannot_enter_full_class():
     assert first.status_code == 201
     assert second.status_code == 409
 
-    assert second.json() == {"detail": "Class session is full"}
+    assert second.json() == {
+        "detail": "Class session is full"
+    }
 
 
 def test_member_cannot_use_staff_checkin_endpoint():
@@ -254,17 +269,20 @@ def test_member_can_view_own_checkins():
     )
 
     create_active_membership(member)
+
     gym_class = create_future_class()
 
     token = login(member.email)
 
-    client.post(
+    checkin_response = client.post(
         "/api/v1/checkins",
         headers=auth_headers(token),
         json={
             "class_id": gym_class.id,
         },
     )
+
+    assert checkin_response.status_code == 201
 
     response = client.get(
         "/api/v1/checkins/me",
@@ -273,9 +291,6 @@ def test_member_can_view_own_checkins():
 
     assert response.status_code == 200
     assert len(response.json()) == 1
-
-
-
 
 
 def test_staff_can_view_class_checkins():
@@ -290,11 +305,14 @@ def test_staff_can_view_class_checkins():
     )
 
     create_active_membership(member)
+
     gym_class = create_future_class()
 
-    member_token = login(member.email)
+    member_token = login(
+        member.email
+    )
 
-    client.post(
+    checkin_response = client.post(
         "/api/v1/checkins",
         headers=auth_headers(member_token),
         json={
@@ -302,7 +320,11 @@ def test_staff_can_view_class_checkins():
         },
     )
 
-    staff_token = login(staff.email)
+    assert checkin_response.status_code == 201
+
+    staff_token = login(
+        staff.email
+    )
 
     response = client.get(
         f"/api/v1/checkins/class/{gym_class.id}",
