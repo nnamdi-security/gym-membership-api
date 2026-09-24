@@ -13,8 +13,7 @@ class PaymentInitialization:
 
 class PaymentProvider(Protocol):
     @property
-    def name(self) -> str:
-        ...
+    def name(self) -> str: ...
 
     def initialize_payment(
         self,
@@ -22,6 +21,4 @@ class PaymentProvider(Protocol):
         reference: str,
         amount: Decimal,
         email: str,
-    ) -> PaymentInitialization:
-        ...
-
+    ) -> PaymentInitialization: ...

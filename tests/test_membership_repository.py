@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from app.models.membership import Membership, MembershipStatus
@@ -204,7 +204,7 @@ def test_get_active_expired_by_returns_due_memberships(
 
     repository = MembershipRepository(db_session)
 
-    today = date.today()
+    today = datetime.now(tz=timezone.UTC).date()
 
     expired_due = repository.create(
         Membership(
@@ -228,7 +228,7 @@ def test_get_active_expired_by_ignores_future_membership(
 
     repository = MembershipRepository(db_session)
 
-    today = date.today()
+    today = datetime.now(tz=timezone.UTC).date()
 
     repository.create(
         Membership(
@@ -252,7 +252,7 @@ def test_get_active_expired_by_ignores_frozen_membership(
 
     repository = MembershipRepository(db_session)
 
-    today = date.today()
+    today = datetime.now(tz=timezone.UTC).date()
 
     repository.create(
         Membership(
@@ -277,7 +277,7 @@ def test_get_active_expiring_on_returns_exact_date(
 
     repository = MembershipRepository(db_session)
 
-    today = date.today()
+    today = datetime.now(tz=timezone.UTC).date()
     reminder_date = today + timedelta(days=7)
 
     due = repository.create(

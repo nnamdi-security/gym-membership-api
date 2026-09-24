@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -16,7 +16,7 @@ def test_class_create_accepts_valid_data():
         22,
         18,
         0,
-        tzinfo=timezone.utc,
+        tzinfo=UTC,
     )
 
     data = GymClassCreateRequest(
@@ -35,7 +35,7 @@ def test_class_create_rejects_zero_capacity():
         GymClassCreateRequest(
             name="Spin",
             capacity=0,
-            starts_at=datetime.now(timezone.utc),
+            starts_at=datetime.now(UTC),
         )
 
 
@@ -44,7 +44,7 @@ def test_class_create_rejects_negative_capacity():
         GymClassCreateRequest(
             name="Spin",
             capacity=-1,
-            starts_at=datetime.now(timezone.utc),
+            starts_at=datetime.now(UTC),
         )
 
 
@@ -56,5 +56,3 @@ def test_class_update_allows_partial_changes():
     assert data.name is None
     assert data.capacity == 15
     assert data.starts_at is None
-
-

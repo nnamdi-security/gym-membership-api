@@ -20,7 +20,6 @@ from app.services.webhook_service import (
     WebhookService,
 )
 
-
 router = APIRouter(
     prefix="/webhooks",
     tags=["Webhooks"],
@@ -35,25 +34,14 @@ def get_webhook_service(
 ) -> WebhookService:
     return WebhookService(
         session=session,
-        payment_repository=PaymentRepository(
-            session
-        ),
-        membership_repository=MembershipRepository(
-            session
-        ),
-        plan_repository=PlanRepository(
-            session
-        ),
-        processed_event_repository=ProcessedEventRepository(
-            session
-        ),
+        payment_repository=PaymentRepository(session),
+        membership_repository=MembershipRepository(session),
+        plan_repository=PlanRepository(session),
+        processed_event_repository=ProcessedEventRepository(session),
     )
 
 
-WEBHOOK_SERVICE_DEPENDENCY = Depends(
-    get_webhook_service
-)
-
+WEBHOOK_SERVICE_DEPENDENCY = Depends(get_webhook_service)
 
 
 # Endpoint
@@ -68,16 +56,11 @@ async def payment_webhook(
 ):
     raw_body = await request.body()
 
-    signature = request.headers.get(
-        "X-Signature"
-    )
+    signature = request.headers.get("X-Signature")
 
-    if (
-        signature is None
-        or not verify_webhook_signature(
-            raw_body,
-            signature,
-        )
+    if signature is None or not verify_webhook_signature(
+        raw_body,
+        signature,
     ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -87,9 +70,7 @@ async def payment_webhook(
     try:
         payload = json.loads(raw_body)
 
-        event = PaymentWebhookEvent.model_validate(
-            payload
-        )
+        event = PaymentWebhookEvent.model_validate(payload)
 
     except (
         json.JSONDecodeError,
@@ -101,9 +82,7 @@ async def payment_webhook(
         ) from None
 
     try:
-        result = service.process_payment_event(
-            event
-        )
+        result = service.process_payment_event(event)
 
     except WebhookPaymentMismatchError:
         raise HTTPException(

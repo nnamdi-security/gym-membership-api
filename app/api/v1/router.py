@@ -1,16 +1,16 @@
 from fastapi import APIRouter, HTTPException, status
 
 from app.api.v1.auth import router as auth_router
+from app.api.v1.checkins import router as checkins_router
+from app.api.v1.classes import router as classes_router
+from app.api.v1.jobs import router as jobs_router
+from app.api.v1.live import router as live_router
 from app.api.v1.membership import router as memberships_router
+from app.api.v1.payments import router as payments_router
 from app.api.v1.plans import router as plans_router
 from app.api.v1.webhooks import router as webhooks_router
-from app.db.session import check_database_connection
-from app.api.v1.payments import router as payments_router
-from app.api.v1.classes import router as classes_router
-from app.api.v1.checkins import router as checkins_router
-from app.api.v1.jobs import router as jobs_router
-
 from app.core.redis import get_redis
+from app.db.session import check_database_connection
 from app.services.redis_service import RedisService
 
 api_router = APIRouter()
@@ -23,6 +23,7 @@ api_router.include_router(payments_router)
 api_router.include_router(classes_router)
 api_router.include_router(checkins_router)
 api_router.include_router(jobs_router)
+api_router.include_router(live_router)
 
 
 @api_router.get("/health", tags=["System"], summary="Check API health")
@@ -51,8 +52,6 @@ def database_health_check():
     }
 
 
-
-
 @api_router.get(
     "/health/redis",
     tags=["System"],
@@ -60,13 +59,11 @@ def database_health_check():
 )
 def redis_health_check():
     try:
-        service = RedisService(
-            get_redis()
-        )
+        service = RedisService(get_redis())
 
         service.ping()
 
-    except Exception: # noqa: BLE001
+    except Exception:  # noqa: BLE001
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Redis is unavailable",

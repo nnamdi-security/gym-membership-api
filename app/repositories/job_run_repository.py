@@ -22,9 +22,7 @@ class JobRunRepository:
             JobRun.run_date == run_date,
         )
 
-        return self.session.exec(
-            statement
-        ).first()
+        return self.session.exec(statement).first()
 
     def add(
         self,

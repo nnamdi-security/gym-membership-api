@@ -2,15 +2,12 @@
 
 from sqlmodel import Session, select
 
-from app.models.payment import Payment
-
-from app.models.payment import Payment, PaymentStatus
-
 from app.models.payment import (
     Payment,
     PaymentMethod,
     PaymentStatus,
 )
+
 
 class PaymentRepository:
     def __init__(self, session: Session):
@@ -26,17 +23,13 @@ class PaymentRepository:
         )
 
     def get_by_reference(
-        #The payment reference will become one of the most important lookup keys in the whole payment flow. It is how an external provider event gets tied back to our internal transaction.
+        # The payment reference will become one of the most important lookup keys in the whole payment flow. It is how an external provider event gets tied back to our internal transaction.
         self,
         reference: str,
     ) -> Payment | None:
-        statement = select(Payment).where(
-            Payment.reference == reference
-        )
+        statement = select(Payment).where(Payment.reference == reference)
 
-        return self.session.exec(
-            statement
-        ).first()
+        return self.session.exec(statement).first()
 
     def get_for_membership(
         self,
@@ -44,20 +37,11 @@ class PaymentRepository:
     ) -> list[Payment]:
         statement = (
             select(Payment)
-            .where(
-                Payment.membership_id
-                == membership_id
-            )
-            .order_by(
-                Payment.id.desc()
-            )
+            .where(Payment.membership_id == membership_id)
+            .order_by(Payment.id.desc())
         )
 
-        return list(
-            self.session.exec(
-                statement
-            ).all()
-        )
+        return list(self.session.exec(statement).all())
 
     def create(
         self,
@@ -78,7 +62,6 @@ class PaymentRepository:
         self.session.refresh(payment)
 
         return payment
-    
 
     def get_succeeded_for_membership(
         self,
@@ -95,7 +78,6 @@ class PaymentRepository:
 
         return self.session.exec(statement).first()
 
-
     # Non-committing repository methods which ensure that payment success and membership activation succeed or fail together.
     def add(
         self,
@@ -104,7 +86,6 @@ class PaymentRepository:
         self.session.add(payment)
 
         return payment
-
 
     # Repository method for pending online payments
     def get_pending_online_for_membership(
@@ -123,18 +104,13 @@ class PaymentRepository:
 
         return self.session.exec(statement).first()
 
-
     # Lock payment lookup
     def get_by_reference_for_update(
         self,
         reference: str,
     ) -> Payment | None:
         statement = (
-            select(Payment)
-            .where(
-                Payment.reference == reference
-            )
-            .with_for_update()
+            select(Payment).where(Payment.reference == reference).with_for_update()
         )
 
         return self.session.exec(statement).first()

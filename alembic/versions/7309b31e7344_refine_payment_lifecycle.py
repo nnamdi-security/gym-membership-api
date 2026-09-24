@@ -5,17 +5,19 @@ Revises: 0b2fe3043043
 Create Date: 2026-09-21 22:34:11.626192
 
 """
-from typing import Sequence, Union
 
-from alembic import op
+from collections.abc import Sequence
+
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
+from alembic import op
+
 # revision identifiers, used by Alembic.
-revision: str = '7309b31e7344'
-down_revision: Union[str, Sequence[str], None] = '0b2fe3043043'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+revision: str = "7309b31e7344"
+down_revision: str | Sequence[str] | None = "0b2fe3043043"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 PAYMENT_STATUS_ENUM = postgresql.ENUM(
@@ -34,6 +36,7 @@ PAYMENT_METHOD_ENUM = postgresql.ENUM(
     name="paymentmethod",
     create_type=False,
 )
+
 
 def upgrade() -> None:
     """Refine the payment lifecycle."""
@@ -205,10 +208,6 @@ def downgrade() -> None:
         "status",
     )
 
-    op.execute(
-        "DROP TYPE paymentmethod"
-    )
+    op.execute("DROP TYPE paymentmethod")
 
-    op.execute(
-        "DROP TYPE paymentstatus"
-    )
+    op.execute("DROP TYPE paymentstatus")

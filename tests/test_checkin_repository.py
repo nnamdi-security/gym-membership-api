@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy.exc import IntegrityError
@@ -6,10 +6,9 @@ from sqlalchemy.exc import IntegrityError
 from app.models.checkin import Checkin
 from app.models.gym_class import GymClass
 from app.models.user import User, UserRole
-from app.repositories.checkin_repository import (
+from app.repositories.checkins_repository import (
     CheckinRepository,
 )
-
 
 
 def create_class_and_members(
@@ -18,10 +17,7 @@ def create_class_and_members(
     gym_class = GymClass(
         name="Spin",
         capacity=12,
-        starts_at=(
-            datetime.now(timezone.utc)
-            + timedelta(days=1)
-        ),
+        starts_at=(datetime.now(UTC) + timedelta(days=1)),
     )
 
     first_member = User(
@@ -55,15 +51,9 @@ def create_class_and_members(
 def test_create_checkin(
     db_session,
 ):
-    gym_class, member, _ = (
-        create_class_and_members(
-            db_session
-        )
-    )
+    gym_class, member, _ = create_class_and_members(db_session)
 
-    repository = CheckinRepository(
-        db_session
-    )
+    repository = CheckinRepository(db_session)
 
     checkin = repository.create(
         Checkin(
@@ -77,19 +67,12 @@ def test_create_checkin(
     assert checkin.member_id == member.id
 
 
-
 def test_get_by_class_and_member(
     db_session,
 ):
-    gym_class, member, _ = (
-        create_class_and_members(
-            db_session
-        )
-    )
+    gym_class, member, _ = create_class_and_members(db_session)
 
-    repository = CheckinRepository(
-        db_session
-    )
+    repository = CheckinRepository(db_session)
 
     created = repository.create(
         Checkin(
@@ -98,43 +81,9 @@ def test_get_by_class_and_member(
         )
     )
 
-    found = (
-        repository.get_by_class_and_member(
-            gym_class.id,
-            member.id,
-        )
-    )
-
-    assert found is not None
-    assert found.id == created.id
-
-
-
-def test_get_by_class_and_member(
-    db_session,
-):
-    gym_class, member, _ = (
-        create_class_and_members(
-            db_session
-        )
-    )
-
-    repository = CheckinRepository(
-        db_session
-    )
-
-    created = repository.create(
-        Checkin(
-            class_id=gym_class.id,
-            member_id=member.id,
-        )
-    )
-
-    found = (
-        repository.get_by_class_and_member(
-            gym_class.id,
-            member.id,
-        )
+    found = repository.get_by_class_and_member(
+        gym_class.id,
+        member.id,
     )
 
     assert found is not None
@@ -145,40 +94,24 @@ def test_get_by_class_and_member(
 def test_get_by_class_and_member_returns_none_when_missing(
     db_session,
 ):
-    gym_class, member, _ = (
-        create_class_and_members(
-            db_session
-        )
-    )
+    gym_class, member, _ = create_class_and_members(db_session)
 
-    repository = CheckinRepository(
-        db_session
-    )
+    repository = CheckinRepository(db_session)
 
-    found = (
-        repository.get_by_class_and_member(
-            gym_class.id,
-            member.id,
-        )
+    found = repository.get_by_class_and_member(
+        gym_class.id,
+        member.id,
     )
 
     assert found is None
 
 
-
-
 def test_get_for_member_returns_member_history(
     db_session,
 ):
-    gym_class, member, _ = (
-        create_class_and_members(
-            db_session
-        )
-    )
+    gym_class, member, _ = create_class_and_members(db_session)
 
-    repository = CheckinRepository(
-        db_session
-    )
+    repository = CheckinRepository(db_session)
 
     created = repository.create(
         Checkin(
@@ -187,9 +120,7 @@ def test_get_for_member_returns_member_history(
         )
     )
 
-    checkins = repository.get_for_member(
-        member.id
-    )
+    checkins = repository.get_for_member(member.id)
 
     assert len(checkins) == 1
     assert checkins[0].id == created.id
@@ -198,15 +129,9 @@ def test_get_for_member_returns_member_history(
 def test_duplicate_member_class_checkin_is_rejected(
     db_session,
 ):
-    gym_class, member, _ = (
-        create_class_and_members(
-            db_session
-        )
-    )
+    gym_class, member, _ = create_class_and_members(db_session)
 
-    repository = CheckinRepository(
-        db_session
-    )
+    repository = CheckinRepository(db_session)
 
     repository.create(
         Checkin(
@@ -221,8 +146,6 @@ def test_duplicate_member_class_checkin_is_rejected(
     )
 
     with pytest.raises(IntegrityError):
-        repository.create(
-            duplicate
-        )
+        repository.create(duplicate)
 
     db_session.rollback()

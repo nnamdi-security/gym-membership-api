@@ -26,7 +26,6 @@ from app.services.payment_service import (
     PlanNotFoundError,
 )
 
-
 router = APIRouter(
     prefix="/payments",
     tags=["Payments"],
@@ -42,9 +41,7 @@ STAFF_USER_DEPENDENCY = Depends(
     )
 )
 
-MEMBER_USER_DEPENDENCY = Depends(
-    require_roles(UserRole.MEMBER)
-)
+MEMBER_USER_DEPENDENCY = Depends(require_roles(UserRole.MEMBER))
 
 
 def get_payment_service(
@@ -66,9 +63,7 @@ def get_payment_service(
     )
 
 
-PAYMENT_SERVICE_DEPENDENCY = Depends(
-    get_payment_service
-)
+PAYMENT_SERVICE_DEPENDENCY = Depends(get_payment_service)
 
 
 @router.post(
@@ -119,10 +114,7 @@ def record_staff_payment(
     except InvalidStaffPaymentMethodError:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=(
-                "ONLINE is not a valid staff-recorded "
-                "payment method"
-            ),
+            detail=("ONLINE is not a valid staff-recorded payment method"),
         ) from None
 
 
@@ -138,9 +130,7 @@ def get_membership_payments(
     service: PaymentService = PAYMENT_SERVICE_DEPENDENCY,
 ):
     try:
-        return service.get_membership_payments(
-            membership_id
-        )
+        return service.get_membership_payments(membership_id)
 
     except MembershipNotFoundError:
         raise HTTPException(
@@ -171,9 +161,7 @@ def initialize_online_payment(
         )
 
         return OnlinePaymentInitializeResponse(
-            payment=PaymentResponse.model_validate(
-                result.payment
-            ),
+            payment=PaymentResponse.model_validate(result.payment),
             checkout_url=result.checkout_url,
         )
 
@@ -192,10 +180,7 @@ def initialize_online_payment(
     except PendingOnlinePaymentExistsError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail=(
-                "A pending online payment already exists "
-                "for this membership"
-            ),
+            detail=("A pending online payment already exists for this membership"),
         ) from None
 
     except PlanNotFoundError:

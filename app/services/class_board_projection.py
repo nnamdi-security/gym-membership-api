@@ -13,5 +13,9 @@ class ClassBoardProjector(Protocol):
         checked_in: int,
         remaining: int,
         full: bool,
-    ) -> None:
-        ...
+    ) -> None: ...
+
+    def delete(
+        self,
+        class_id: int,
+    ) -> None: ...

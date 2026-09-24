@@ -22,12 +22,7 @@ class FirestoreClassBoardProjector:
         remaining: int,
         full: bool,
     ) -> None:
-        document = (
-            self.client.collection(
-                self.COLLECTION_NAME
-            )
-            .document(str(class_id))
-        )
+        document = self.client.collection(self.COLLECTION_NAME).document(str(class_id))
 
         document.set(
             {
@@ -40,3 +35,9 @@ class FirestoreClassBoardProjector:
                 "full": full,
             }
         )
+
+    def delete(
+        self,
+        class_id: int,
+    ) -> None:
+        (self.client.collection(self.COLLECTION_NAME).document(str(class_id)).delete())

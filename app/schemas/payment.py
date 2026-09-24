@@ -11,7 +11,7 @@ from app.models.payment import (
 
 class StaffPaymentRequest(BaseModel):
     membership_id: int = Field(gt=0)
-  
+
     method: PaymentMethod
 
     model_config = ConfigDict(
@@ -36,14 +36,12 @@ class PaymentResponse(BaseModel):
     )
 
 
-
 class OnlinePaymentInitializeRequest(BaseModel):
     membership_id: int = Field(gt=0)
 
     model_config = ConfigDict(
         extra="forbid",
     )
-
 
 
 class OnlinePaymentInitializeResponse(BaseModel):

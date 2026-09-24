@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from fastapi.testclient import TestClient
@@ -357,7 +357,7 @@ def test_front_desk_can_freeze_active_membership():
 
     plan = create_plan()
 
-    today = date.today()
+    today = datetime.now(timezone.UTC)
 
     with Session(engine) as session:
         membership = Membership(
@@ -402,7 +402,7 @@ def test_front_desk_can_unfreeze_membership():
 
     plan = create_plan()
 
-    today = date.today()
+    today = datetime.now(timezone.UTC)
 
     with Session(engine) as session:
         membership = Membership(
@@ -437,52 +437,6 @@ def test_front_desk_can_unfreeze_membership():
     assert body["end_date"] == (original_end_date + timedelta(days=5)).isoformat()
 
 
-def test_front_desk_can_unfreeze_membership():
-    staff = create_user(
-        email="frontdesk@example.com",
-        role=UserRole.FRONT_DESK,
-    )
-
-    member = create_user(
-        email="member@example.com",
-        role=UserRole.MEMBER,
-    )
-
-    plan = create_plan()
-
-    today = date.today()
-
-    with Session(engine) as session:
-        membership = Membership(
-            member_id=member.id,
-            plan_id=plan.id,
-            status=MembershipStatus.FROZEN,
-            start_date=today - timedelta(days=20),
-            end_date=today + timedelta(days=10),
-            frozen_on=today - timedelta(days=5),
-        )
-
-        session.add(membership)
-        session.commit()
-        session.refresh(membership)
-
-        membership_id = membership.id
-        original_end_date = membership.end_date
-
-    token = login(staff.email)
-
-    response = client.post(
-        f"/api/v1/memberships/{membership_id}/unfreeze",
-        headers=auth_headers(token),
-    )
-
-    assert response.status_code == 200
-
-    body = response.json()
-
-    assert body["status"] == "active"
-    assert body["frozen_on"] is None
-    assert body["end_date"] == (original_end_date + timedelta(days=5)).isoformat()
 
 
 def test_member_cannot_freeze_membership():

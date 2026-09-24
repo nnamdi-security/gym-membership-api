@@ -19,6 +19,7 @@ Usage
 
 Only the standard library is used, so it runs anywhere.
 """
+
 import argparse
 import hashlib
 import hmac
@@ -37,7 +38,9 @@ def sign(secret: str, raw_body: bytes) -> str:
 def send(url: str, body: dict, signature: str) -> tuple[int, str]:
     raw = json.dumps(body, separators=(",", ":")).encode()
     req = urllib.request.Request(
-        url, data=raw, method="POST",
+        url,
+        data=raw,
+        method="POST",
         headers={"Content-Type": "application/json", "X-Signature": signature},
     )
     try:
@@ -68,14 +71,35 @@ def report(label: str, expected: str, status: int, text: str) -> None:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Mock payment provider — sends signed webhooks.")
+    ap = argparse.ArgumentParser(
+        description="Mock payment provider — sends signed webhooks."
+    )
     ap.add_argument("--url", required=True, help="your webhook endpoint")
     ap.add_argument("--secret", required=True, help="the WEBHOOK_SECRET your API uses")
-    ap.add_argument("--reference", required=True, help="the booking/order/contract reference to confirm")
-    ap.add_argument("--amount", type=int, required=True, help="amount in the smallest unit (e.g. kobo)")
-    ap.add_argument("--duplicate", action="store_true", help="send the same event twice")
-    ap.add_argument("--bad-signature", action="store_true", help="also send one with a wrong signature")
-    ap.add_argument("--orphan", action="store_true", help="also send an event for an unknown reference")
+    ap.add_argument(
+        "--reference",
+        required=True,
+        help="the booking/order/contract reference to confirm",
+    )
+    ap.add_argument(
+        "--amount",
+        type=int,
+        required=True,
+        help="amount in the smallest unit (e.g. kobo)",
+    )
+    ap.add_argument(
+        "--duplicate", action="store_true", help="send the same event twice"
+    )
+    ap.add_argument(
+        "--bad-signature",
+        action="store_true",
+        help="also send one with a wrong signature",
+    )
+    ap.add_argument(
+        "--orphan",
+        action="store_true",
+        help="also send an event for an unknown reference",
+    )
     a = ap.parse_args()
 
     print(f"\nMock provider -> {a.url}\n")
@@ -89,7 +113,7 @@ def main() -> None:
 
     if a.duplicate:
         time.sleep(0.5)
-        status, text = send(a.url, event, sig)          # same event_id, same signature
+        status, text = send(a.url, event, sig)  # same event_id, same signature
         report("2. SAME event again (retry)", "200, nothing changes", status, text)
 
     if a.bad_signature:
@@ -102,8 +126,10 @@ def main() -> None:
         status, text = send(a.url, orphan, sign(a.secret, raw_o))
         report("4. unknown reference", "200, logged as orphan", status, text)
 
-    print("\nNow check your database: the reference must be confirmed exactly once,\n"
-          "and processed_events must contain the event_id exactly once.\n")
+    print(
+        "\nNow check your database: the reference must be confirmed exactly once,\n"
+        "and processed_events must contain the event_id exactly once.\n"
+    )
 
 
 if __name__ == "__main__":

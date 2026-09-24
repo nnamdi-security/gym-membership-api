@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -13,14 +13,11 @@ def test_payment_webhook_event_accepts_provider_payload():
         reference="FITPRO-ABC",
         amount=1500000,
         currency="NGN",
-        paid_at=datetime.now(timezone.utc),
+        paid_at=datetime.now(UTC),
     )
 
     assert event.event_id == "evt_abc123"
-    assert (
-        event.event_type
-        == "payment.succeeded"
-    )
+    assert event.event_type == "payment.succeeded"
     assert event.amount == 1500000
 
 
@@ -32,5 +29,5 @@ def test_payment_webhook_rejects_non_positive_amount():
             reference="FITPRO-ABC",
             amount=0,
             currency="NGN",
-            paid_at=datetime.now(timezone.utc),
+            paid_at=datetime.now(UTC),
         )

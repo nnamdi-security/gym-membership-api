@@ -230,14 +230,6 @@ def unfreeze_membership(
         )
 
 
-
-
-
-
-
-
-
-
 # PENDING_PAYMENT
 #     │
 #     ├── blocks another pending subscription

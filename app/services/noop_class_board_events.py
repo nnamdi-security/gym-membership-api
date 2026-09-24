@@ -1,7 +1,7 @@
-class NoOpClassBoardProjector:
+class NoOpClassBoardEventPublisher:
     def publish(
         self,
-        **kwargs,
+        payload: dict,
     ) -> None:
         return None
 

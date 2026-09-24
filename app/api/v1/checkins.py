@@ -2,6 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
 
 from app.api.dependencies.auth import require_roles
+from app.core.activity_feed import (
+    get_activity_feed_projector,
+)
+from app.core.class_board_events import (
+    get_class_board_event_publisher,
+)
 from app.db.session import get_session
 from app.models.user import User, UserRole
 from app.repositories.checkins_repository import CheckinRepository
@@ -24,15 +30,7 @@ from app.services.checkin_service import (
     MemberNotFoundError,
 )
 
-from app.services.firestore_class_board import (
-    FirestoreClassBoardProjector,
-)
-
-from app.core.class_board import (
-    get_class_board_projector,
-)
-
-class_board_projector=get_class_board_projector(),
+activity_feed_projector = (get_activity_feed_projector(),)
 
 router = APIRouter(
     prefix="/checkins",
@@ -42,9 +40,7 @@ router = APIRouter(
 
 SESSION_DEPENDENCY = Depends(get_session)
 
-MEMBER_USER_DEPENDENCY = Depends(
-    require_roles(UserRole.MEMBER)
-)
+MEMBER_USER_DEPENDENCY = Depends(require_roles(UserRole.MEMBER))
 
 STAFF_USER_DEPENDENCY = Depends(
     require_roles(
@@ -52,8 +48,6 @@ STAFF_USER_DEPENDENCY = Depends(
         UserRole.ADMIN,
     )
 )
-
-
 
 
 # Service dependency
@@ -66,14 +60,12 @@ def get_checkin_service(
         gym_class_repository=GymClassRepository(session),
         membership_repository=MembershipRepository(session),
         user_repository=UserRepository(session),
-        class_board_projector=FirestoreClassBoardProjector(),
+        activity_feed_projector=get_activity_feed_projector(),
+        class_board_event_publisher=get_class_board_event_publisher(),
     )
 
 
-CHECKIN_SERVICE_DEPENDENCY = Depends(
-    get_checkin_service
-)
-
+CHECKIN_SERVICE_DEPENDENCY = Depends(get_checkin_service)
 
 
 # Member self-checkin-in
@@ -123,7 +115,6 @@ def create_checkin(
             status_code=status.HTTP_409_CONFLICT,
             detail="Class session has already started",
         ) from None
-
 
 
 # Staff-assisted checkin
@@ -187,9 +178,6 @@ def create_checkin_for_member(
         ) from None
 
 
-
-
-
 # Member view own check-ins
 @router.get(
     "/me",
@@ -201,10 +189,7 @@ def get_my_checkins(
     current_user: User = MEMBER_USER_DEPENDENCY,
     service: CheckinService = CHECKIN_SERVICE_DEPENDENCY,
 ):
-    return service.get_member_checkins(
-        current_user.id
-    )
-
+    return service.get_member_checkins(current_user.id)
 
 
 # Staff/admin views class attendance
@@ -220,9 +205,7 @@ def get_class_checkins(
     service: CheckinService = CHECKIN_SERVICE_DEPENDENCY,
 ):
     try:
-        return service.get_class_checkins(
-            class_id
-        )
+        return service.get_class_checkins(class_id)
 
     except GymClassNotFoundError:
         raise HTTPException(

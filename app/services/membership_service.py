@@ -179,7 +179,7 @@ class MembershipService:
         if membership.start_date is None or membership.end_date is None:
             raise MembershipCannotBeFrozenError
 
-        effective_date = freeze_date or date.today()
+        effective_date = freeze_date or datetime.now(timezone.UTC)
 
         if effective_date < membership.start_date:
             raise MembershipCannotBeFrozenError
@@ -209,7 +209,7 @@ class MembershipService:
         if membership.end_date is None:
             raise MembershipCannotBeUnfrozenError
 
-        effective_date = unfreeze_date or date.today()
+        effective_date = unfreeze_date or datetime.now(timezone.UTC)
 
         if effective_date < membership.frozen_on:
             raise MembershipCannotBeUnfrozenError

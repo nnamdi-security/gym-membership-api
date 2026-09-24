@@ -32,17 +32,6 @@ def test_staff_payment_rejects_extra_amount():
         )
 
 
-
-
-
-
-
-
-
-
-
-
-
 # create PENDING payment
 # ↓
 # provider
