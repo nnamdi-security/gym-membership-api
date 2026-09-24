@@ -756,147 +756,6 @@ Shared:
 ---
 
 
-
-
-## Day 6 — Scheduled Classes, Check-ins and Capacity Concurrency
-
-### What we did
-
-Today we implemented FitPro's scheduled class and check-in domain.
-
-We clarified that one row in the `classes` table represents one specific scheduled class session, for example:
-
-`Spin — 22 Sep 2026 — 6:00 PM`
-
-rather than a reusable class definition that resets every day.
-
-We implemented class schemas, repository, service and CRUD API.
-
-Administrators can create, update and delete scheduled class sessions.
-
-Authenticated members, front-desk staff and administrators can list and view scheduled sessions.
-
-The class service prevents normal class creation in the past.
-
-It also prevents reducing class capacity below the number of members already checked in.
-
-A class session with attendance history cannot be deleted.
-
-We implemented the CheckinRepository and CheckinService.
-
-Members can check themselves into a class, while front-desk staff and administrators can perform assisted check-in for a member.
-
-Check-in requires:
-
-- the class to exist;
-- the target user to be a MEMBER;
-- the member to have an ACTIVE membership;
-- the membership dates to still grant entitlement;
-- the class not to have already started;
-- the member not to already be checked in;
-- the class not to be full.
-
-We implemented the class-capacity concurrency solution using a PostgreSQL row lock.
-
-Before checking capacity, the service loads the class with:
-
-`SELECT ... FOR UPDATE`
-
-inside the same transaction.
-
-The service then counts check-ins and inserts the new check-in before committing.
-
-This prevents two simultaneous requests from both taking the final class space.
-
-We added a real PostgreSQL concurrency test using separate database sessions and threads.
-
-The test prepares a class with capacity 12 and 11 existing check-ins, then sends two competing check-in operations at the same time.
-
-The expected result is:
-
-- one request succeeds;
-- one request receives the class-full error;
-- final attendance remains exactly 12.
-
-We also added class-board responses that derive:
-
-- capacity;
-- checked-in count;
-- remaining spaces;
-- whether the class is full.
-
-These values currently come from PostgreSQL and will later be projected into Firestore for the wall display.
-
-### What broke / challenges
-
-The main challenge was understanding why a normal:
-
-`count → compare → insert`
-
-sequence is not safe when requests happen concurrently.
-
-Without locking, two requests could both read the same attendance count and both insert, which could push a class beyond capacity.
-
-We also had to keep transaction boundaries correct.
-
-The class row lock must remain active from the moment the class is selected through the attendance count and check-in insert until the transaction commits.
-
-Another challenge was separating normal business tests from actual concurrency tests.
-
-Fake repositories can test the capacity rule itself, but they cannot prove PostgreSQL locking behavior.
-
-We therefore added a separate integration test using the real `fitpro_test` PostgreSQL database.
-
-### What we learnt
-
-We learnt that concurrency correctness cannot be proven only with application-level `if` statements.
-
-The database transaction and row lock are what serialize competing capacity decisions.
-
-We learnt that the authoritative class attendance count should come from the `checkins` table instead of a manually maintained counter on the class row.
-
-We also learnt why a frozen or date-expired membership should not grant class access even if a stale status value exists.
-
-The service checks both membership status and entitlement dates.
-
-We learnt that a new class session should be a new database row rather than resetting yesterday's attendance count.
-
-This preserves historical attendance automatically.
-
-### What is next
-
-Next we will implement the scheduled daily membership job.
-
-The daily job must:
-
-- expire memberships whose end date has passed;
-- create renewal reminders seven days before expiry;
-- be safe to run more than once on the same day;
-- avoid duplicate reminders;
-- record its execution in `job_runs`.
-
-This is the main hard problem described in the original project brief.
-
-After that, we will continue with the remaining live-board, Firestore, Redis and activity-feed requirements.
-
-### Who did what
-
-Michael:
-- [Fill in your actual work.]
-
-Partner:
-- [Fill in your partner's actual work.]
-
-Shared:
-- Reviewed the class-capacity race condition.
-- Discussed the transaction and locking strategy.
-- Tested class and check-in behavior.
-
-
-
-
-
-
 ## Day 7 — Daily Job and Idempotency
 
 ### What we did
@@ -996,13 +855,16 @@ Next we will continue with the remaining infrastructure requirements:
 
 ### Who did what
 
-Michael:
-- [Fill in your actual work.]
+Nnamdi:
+- Designed and implemented the insert-first idempotency strategy for the daily job, including the job_runs/reminders repositories and the transaction ordering (claim the job-run row with flush() before doing any membership maintenance, commit everything together).
 
-Partner:
-- [Fill in your partner's actual work.]
+- Implemented the missed-job recovery logic (end_date <= today rather than an exact-date match) and the exact seven-day reminder boundary check.
+
+Stephanie:
+- Built the secure scheduler endpoint (POST /api/v1/jobs/daily) with X-API-Key header authentication, separate from the normal JWT-based user auth.
+- Wrote the PostgreSQL test suite for the daily job: running it twice sequentially, two concurrent executions, exactly-one-job-run-row, exactly-one-reminder, membership expiry, rollback-on-failure, and frozen-membership behavior.
 
 Shared:
 - Reviewed the daily-job race condition.
 - Discussed the insert-first idempotency strategy.
-- Reviewed the transaction and rollback behavior.
+- Reviewed the transaction and rollback behavior. 
