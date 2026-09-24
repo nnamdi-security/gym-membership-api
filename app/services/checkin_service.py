@@ -10,7 +10,7 @@ from app.models.user import UserRole
 from app.repositories.checkins_repository import CheckinRepository
 from app.repositories.gym_class_repository import GymClassRepository
 from app.repositories.membership_repository import MembershipRepository
-from app.repositories.user import UserRepository
+from app.repositories.user_repository import UserRepository
 from app.services.activity_feed_projection import (
     ActivityFeedProjector,
 )
@@ -132,10 +132,6 @@ class CheckinService:
 
         self.session.refresh(checkin)
 
-        self._publish_class_board(gym_class)
-
-        self._publish_activity(checkin=checkin, gym_class=gym_class)
-
         board_payload = self._build_class_board_payload(gym_class)
 
         self._publish_class_board(board_payload)
@@ -166,7 +162,7 @@ class CheckinService:
         if membership.start_date is None or membership.end_date is None:
             raise ActiveMembershipRequiredError
 
-        today = datetime.now(timezone.UTC)
+        today = datetime.now(timezone.utc).date()
 
         if not (membership.start_date <= today < membership.end_date):
             raise ActiveMembershipRequiredError
@@ -207,7 +203,7 @@ class CheckinService:
         self,
         gym_class,
     ) -> dict:
-        checked_in = self.gym_class_repository.count_checkins(gym_class.id)
+        checked_in = (self.gym_class_repository.count_checkins(gym_class.id))
 
         remaining = max(
             gym_class.capacity - checked_in,

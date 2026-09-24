@@ -38,7 +38,7 @@ class DailyJobService:
         self,
         run_date: date | None = None,
     ) -> DailyJobResult:
-        effective_date = run_date or datetime.now(timezone.UTC)
+        effective_date = run_date or datetime.now(timezone.utc)
 
         claimed = self._claim_run(effective_date)
 

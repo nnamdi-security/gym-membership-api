@@ -17,12 +17,11 @@ from app.models.user import User, UserRole
 client = TestClient(app)
 
 
-# Helper function
 def create_user(
     email: str,
     role: UserRole,
     password: str = "StrongPass123!",
-) -> User:
+) -> dict[str, int | str]:
     with Session(engine) as session:
         user = User(
             email=email,
@@ -34,10 +33,13 @@ def create_user(
         session.commit()
         session.refresh(user)
 
-        return user
+        return {
+            "id": user.id,
+            "email": user.email,
+        }
 
 
-def create_pending_membership() -> tuple[User, Plan, Membership]:
+def create_pending_membership() -> dict[str, int | str | Decimal]:
     with Session(engine) as session:
         member = User(
             email="member@example.com",
@@ -68,7 +70,13 @@ def create_pending_membership() -> tuple[User, Plan, Membership]:
         session.commit()
         session.refresh(membership)
 
-        return member, plan, membership
+        return {
+            "member_id": member.id,
+            "member_email": member.email,
+            "plan_id": plan.id,
+            "plan_price": plan.price,
+            "membership_id": membership.id,
+        }
 
 
 def login(
@@ -102,15 +110,15 @@ def test_front_desk_can_record_payment():
         role=UserRole.FRONT_DESK,
     )
 
-    _, plan, membership = create_pending_membership()
+    data = create_pending_membership()
 
-    token = login(staff.email)
+    token = login(staff["email"])
 
     response = client.post(
         "/api/v1/payments/staff",
         headers=auth_headers(token),
         json={
-            "membership_id": membership.id,
+            "membership_id": data["membership_id"],
             "method": PaymentMethod.CASH.value,
         },
     )
@@ -119,11 +127,11 @@ def test_front_desk_can_record_payment():
 
     body = response.json()
 
-    assert body["membership_id"] == membership.id
-    assert Decimal(body["amount"]) == plan.price
+    assert body["membership_id"] == data["membership_id"]
+    assert Decimal(body["amount"]) == data["plan_price"]
     assert body["status"] == "succeeded"
     assert body["method"] == "cash"
-    assert body["recorded_by"] == staff.id
+    assert body["recorded_by"] == staff["id"]
     assert body["paid_at"] is not None
 
 
@@ -133,15 +141,15 @@ def test_staff_payment_activates_membership():
         role=UserRole.FRONT_DESK,
     )
 
-    _, _, membership = create_pending_membership()
+    data = create_pending_membership()
 
-    token = login(staff.email)
+    token = login(staff["email"])
 
     response = client.post(
         "/api/v1/payments/staff",
         headers=auth_headers(token),
         json={
-            "membership_id": membership.id,
+            "membership_id": data["membership_id"],
             "method": PaymentMethod.TRANSFER.value,
         },
     )
@@ -151,7 +159,7 @@ def test_staff_payment_activates_membership():
     with Session(engine) as session:
         stored = session.get(
             Membership,
-            membership.id,
+            data["membership_id"],
         )
 
         assert stored is not None
@@ -161,15 +169,15 @@ def test_staff_payment_activates_membership():
 
 
 def test_member_cannot_record_staff_payment():
-    member, _, membership = create_pending_membership()
+    data = create_pending_membership()
 
-    token = login(member.email)
+    token = login(data["member_email"])
 
     response = client.post(
         "/api/v1/payments/staff",
         headers=auth_headers(token),
         json={
-            "membership_id": membership.id,
+            "membership_id": data["membership_id"],
             "method": PaymentMethod.CASH.value,
         },
     )
@@ -183,15 +191,15 @@ def test_staff_cannot_record_online_payment_manually():
         role=UserRole.FRONT_DESK,
     )
 
-    _, _, membership = create_pending_membership()
+    data = create_pending_membership()
 
-    token = login(staff.email)
+    token = login(staff["email"])
 
     response = client.post(
         "/api/v1/payments/staff",
         headers=auth_headers(token),
         json={
-            "membership_id": membership.id,
+            "membership_id": data["membership_id"],
             "method": PaymentMethod.ONLINE.value,
         },
     )
@@ -205,12 +213,12 @@ def test_membership_cannot_be_paid_twice():
         role=UserRole.FRONT_DESK,
     )
 
-    _, _, membership = create_pending_membership()
+    data = create_pending_membership()
 
-    token = login(staff.email)
+    token = login(staff["email"])
 
     payload = {
-        "membership_id": membership.id,
+        "membership_id": data["membership_id"],
         "method": PaymentMethod.CASH.value,
     }
 
@@ -227,9 +235,6 @@ def test_membership_cannot_be_paid_twice():
     )
 
     assert first.status_code == 201
-
-    # The first successful payment activates the membership,
-    # so the second request no longer sees PENDING_PAYMENT.
     assert second.status_code == 409
 
 
@@ -239,18 +244,20 @@ def test_staff_can_get_payment():
         role=UserRole.FRONT_DESK,
     )
 
-    _, _, membership = create_pending_membership()
+    data = create_pending_membership()
 
-    token = login(staff.email)
+    token = login(staff["email"])
 
     create_response = client.post(
         "/api/v1/payments/staff",
         headers=auth_headers(token),
         json={
-            "membership_id": membership.id,
+            "membership_id": data["membership_id"],
             "method": PaymentMethod.CARD.value,
         },
     )
+
+    assert create_response.status_code == 201
 
     payment_id = create_response.json()["id"]
 
@@ -269,21 +276,23 @@ def test_staff_can_view_membership_payment_history():
         role=UserRole.FRONT_DESK,
     )
 
-    _, _, membership = create_pending_membership()
+    data = create_pending_membership()
 
-    token = login(staff.email)
+    token = login(staff["email"])
 
-    client.post(
+    create_response = client.post(
         "/api/v1/payments/staff",
         headers=auth_headers(token),
         json={
-            "membership_id": membership.id,
+            "membership_id": data["membership_id"],
             "method": PaymentMethod.CASH.value,
         },
     )
 
+    assert create_response.status_code == 201
+
     response = client.get(
-        (f"/api/v1/payments/membership/{membership.id}"),
+        f"/api/v1/payments/membership/{data['membership_id']}",
         headers=auth_headers(token),
     )
 
@@ -292,19 +301,19 @@ def test_staff_can_view_membership_payment_history():
     payments = response.json()
 
     assert len(payments) == 1
-    assert payments[0]["membership_id"] == membership.id
+    assert payments[0]["membership_id"] == data["membership_id"]
 
 
 def test_member_can_initialize_online_payment():
-    member, plan, membership = create_pending_membership()
+    data = create_pending_membership()
 
-    token = login(member.email)
+    token = login(data["member_email"])
 
     response = client.post(
         "/api/v1/payments/online/initialize",
         headers=auth_headers(token),
         json={
-            "membership_id": membership.id,
+            "membership_id": data["membership_id"],
         },
     )
 
@@ -312,8 +321,8 @@ def test_member_can_initialize_online_payment():
 
     body = response.json()
 
-    assert body["payment"]["membership_id"] == membership.id
-    assert Decimal(body["payment"]["amount"]) == plan.price
+    assert body["payment"]["membership_id"] == data["membership_id"]
+    assert Decimal(body["payment"]["amount"]) == data["plan_price"]
     assert body["payment"]["status"] == "pending"
     assert body["payment"]["method"] == "online"
     assert body["payment"]["paid_at"] is None

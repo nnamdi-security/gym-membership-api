@@ -1,6 +1,15 @@
-from datetime import UTC, datetime, timedelta, timezone
-
+from datetime import UTC, date, datetime, timedelta, timezone
 import pytest
+
+from app.services.noop_activity_feed_projection import (
+    NoOpActivityFeedProjector,
+)
+from app.services.noop_class_board_events import (
+    NoOpClassBoardEventPublisher,
+)
+from app.services.noop_class_board_projection import (
+    NoOpClassBoardProjector,
+)
 
 from app.models.checkin import Checkin
 from app.models.gym_class import GymClass
@@ -18,9 +27,9 @@ from app.services.checkin_service import (
 
 
 class FakeGymClassRepository:
-    def __init__(self):
+    def __init__(self, checkin_repository):
         self.classes: dict[int, GymClass] = {}
-        self.checkin_count = 0
+        self.checkin_repository = checkin_repository
 
     def get_by_id_for_update(
         self,
@@ -32,7 +41,11 @@ class FakeGymClassRepository:
         self,
         class_id: int,
     ) -> int:
-        return self.checkin_count
+        return sum(
+            1
+            for checkin in self.checkin_repository.checkins
+            if checkin.class_id == class_id
+        )
 
 
 class FakeCheckinRepository:
@@ -98,22 +111,36 @@ class FakeSession:
         pass
 
 
+class FakeClassBoardProjector:
+    def __init__(self):
+        self.payloads = []
+
+    def publish(
+        self,
+        **kwargs,
+    ):
+        self.payloads.append(kwargs)
+
 def build_service():
-    gym_class_repository = FakeGymClassRepository()
+    session = FakeSession
     checkin_repository = FakeCheckinRepository()
+    gym_class_repository = FakeGymClassRepository(checkin_repository)
+    
     membership_repository = FakeMembershipRepository()
     user_repository = FakeUserRepository()
 
-    projector = FakeClassBoardProjector()
+    class_board_projector = FakeClassBoardProjector()
 
     service = CheckinService(
-        session=FakeSession(),
-        checkin_repository=checkin_repository,
-        gym_class_repository=gym_class_repository,
-        membership_repository=membership_repository,
-        user_repository=user_repository,
-        class_board_projector=projector,
-    )
+    session=session,
+    checkin_repository=checkin_repository,
+    gym_class_repository=gym_class_repository,
+    membership_repository=membership_repository,
+    user_repository=user_repository,
+    class_board_projector=class_board_projector,
+    activity_feed_projector=NoOpActivityFeedProjector(),
+    class_board_event_publisher=NoOpClassBoardEventPublisher(),
+)
 
     member = User(
         id=1,
@@ -129,8 +156,8 @@ def build_service():
         member_id=1,
         plan_id=1,
         status=MembershipStatus.ACTIVE,
-        start_date=datetime.now(timezone.UTC) - timedelta(days=5),
-        end_date=datetime.now(timezone.UTC) + timedelta(days=25),
+        start_date=date.today() - timedelta(days=5),  # noqa: DTZ011
+        end_date=date.today() + timedelta(days=25),  # noqa: DTZ011
     )
 
     gym_class_repository.classes[1] = GymClass(
@@ -146,6 +173,9 @@ def build_service():
         gym_class_repository=gym_class_repository,
         membership_repository=membership_repository,
         user_repository=user_repository,
+        class_board_projector=class_board_projector,
+        activity_feed_projector=NoOpActivityFeedProjector(),
+        class_board_event_publisher=NoOpClassBoardEventPublisher(),
     )
 
     return (
@@ -154,6 +184,8 @@ def build_service():
         checkin_repository,
         membership_repository,
         user_repository,
+        class_board_projector
+        
     )
 
 
@@ -162,6 +194,7 @@ def test_member_can_check_in():
         service,
         _,
         checkin_repository,
+        _,
         _,
         _,
     ) = build_service()
@@ -179,7 +212,7 @@ def test_member_can_check_in():
 
 
 def test_checkin_rejects_missing_class():
-    service, class_repository, _, _, _ = build_service()
+    service, class_repository, _, _, _, _ = build_service()
 
     class_repository.classes.clear()
 
@@ -191,7 +224,7 @@ def test_checkin_rejects_missing_class():
 
 
 def test_checkin_rejects_missing_member():
-    service, _, _, _, user_repository = build_service()
+    service, _, _, _, user_repository, _ = build_service()
 
     user_repository.users.clear()
 
@@ -203,7 +236,7 @@ def test_checkin_rejects_missing_member():
 
 
 def test_checkin_rejects_staff_user():
-    service, _, _, _, user_repository = build_service()
+    service, _, _, _, user_repository, _ = build_service()
 
     user_repository.users[1].role = UserRole.FRONT_DESK
 
@@ -221,6 +254,7 @@ def test_checkin_requires_active_membership():
         _,
         membership_repository,
         _,
+        _
     ) = build_service()
 
     membership_repository.memberships.clear()
@@ -239,11 +273,12 @@ def test_checkin_rejects_expired_active_membership():
         _,
         membership_repository,
         _,
+        _
     ) = build_service()
 
     membership = membership_repository.memberships[1]
 
-    membership.end_date = datetime.now(timezone.UTC)
+    membership.end_date = date.today()  # noqa: DTZ011
 
     with pytest.raises(ActiveMembershipRequiredError):
         service.check_in(
@@ -259,6 +294,7 @@ def test_member_cannot_check_in_twice():
         _,
         _,
         _,
+        _
     ) = build_service()
 
     service.check_in(
@@ -280,6 +316,7 @@ def test_checkin_rejects_started_class():
         _,
         _,
         _,
+        _
     ) = build_service()
 
     class_repository.classes[1].starts_at = datetime.now(UTC) - timedelta(
@@ -293,20 +330,13 @@ def test_checkin_rejects_started_class():
         )
 
 
-class FakeClassBoardProjector:
-    def __init__(self):
-        self.payloads = []
 
-    def publish(
-        self,
-        **kwargs,
-    ):
-        self.payloads.append(kwargs)
 
 
 def test_successful_checkin_publishes_class_board():
     (
         service,
+        _,
         checkin_repository,
         _,
         _,

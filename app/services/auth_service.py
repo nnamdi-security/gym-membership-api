@@ -6,7 +6,7 @@ from app.core.security import (
     verify_password,
 )
 from app.models.user import User, UserRole
-from app.repositories.user import UserRepository
+from app.repositories.user_repository import UserRepository
 from app.schemas.auth import UserLoginRequest, UserRegisterRequest
 
 
@@ -23,7 +23,7 @@ class AuthService:
         self.user_repository = user_repository
 
     def register(self, data: UserRegisterRequest) -> User:
-        existing_user = self.user_repository.get_user_by_email(str(data.email))
+        existing_user = self.user_repository.get_by_email(str(data.email))
 
         if existing_user is not None:
             raise EmailAlreadyRegisteredError
@@ -40,7 +40,7 @@ class AuthService:
             raise EmailAlreadyRegisteredError from None
 
     def authenticate(self, data: UserLoginRequest) -> str:
-        user = self.user_repository.get_user_by_email(str(data.email))
+        user = self.user_repository.get_by_email(str(data.email))
 
         if user is None:
             raise InvalidCredentialsError

@@ -4,7 +4,7 @@ from sqlmodel import Session
 from app.api.dependencies.auth import get_current_user, require_roles
 from app.db.session import get_session
 from app.models.user import User, UserRole
-from app.repositories.user import UserRepository
+from app.repositories.user_repository import UserRepository
 from app.schemas.auth import TokenResponse, UserLoginRequest, UserRegisterRequest
 from app.schemas.user import UserResponse
 from app.services.auth_service import (

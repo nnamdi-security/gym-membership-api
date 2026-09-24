@@ -50,7 +50,7 @@ class PlanService:
         for field, value in updates.items():
             setattr(plan, field, value)
 
-        plan.updated_at = datetime.now(timezone.UTC)
+        plan.updated_at = datetime.now(timezone.utc)
 
         return self.plan_repository.update(plan)
 

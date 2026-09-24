@@ -9,7 +9,7 @@ from sqlmodel import Session
 from app.core.security import decode_access_token
 from app.db.session import get_session
 from app.models.user import User, UserRole
-from app.repositories.user import UserRepository
+from app.repositories.user_repository import UserRepository
 
 bearer_scheme = HTTPBearer(
     auto_error=False,
@@ -47,7 +47,7 @@ def get_current_user(
 
     repository = UserRepository(session)
 
-    user = repository.get_user_by_id(user_id)
+    user = repository.get_by_id(user_id)
 
     if user is None:
         raise credentials_exception

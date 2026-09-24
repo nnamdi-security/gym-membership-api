@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 
 from fastapi.testclient import TestClient
@@ -357,15 +357,15 @@ def test_front_desk_can_freeze_active_membership():
 
     plan = create_plan()
 
-    today = datetime.now(timezone.UTC)
+    today = date.today()  # noqa: DTZ011
 
     with Session(engine) as session:
         membership = Membership(
             member_id=member.id,
             plan_id=plan.id,
             status=MembershipStatus.ACTIVE,
-            start_date=today - timedelta(days=10),
-            end_date=today + timedelta(days=20),
+            start_date=date.today() - timedelta(days=10),
+            end_date=date.today() + timedelta(days=20),
         )
 
         session.add(membership)
@@ -402,7 +402,7 @@ def test_front_desk_can_unfreeze_membership():
 
     plan = create_plan()
 
-    today = datetime.now(timezone.UTC)
+    today = date.today()  # noqa: DTZ011
 
     with Session(engine) as session:
         membership = Membership(

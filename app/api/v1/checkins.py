@@ -8,12 +8,14 @@ from app.core.activity_feed import (
 from app.core.class_board_events import (
     get_class_board_event_publisher,
 )
+from app.core.class_board import get_class_board_projector
 from app.db.session import get_session
 from app.models.user import User, UserRole
 from app.repositories.checkins_repository import CheckinRepository
 from app.repositories.gym_class_repository import GymClassRepository
 from app.repositories.membership_repository import MembershipRepository
-from app.repositories.user import UserRepository
+from app.repositories.user_repository import UserRepository
+from app.services.checkin_service import CheckinService
 from app.schemas.checkin import (
     CheckinCreateRequest,
     CheckinForMemberRequest,
@@ -22,7 +24,6 @@ from app.schemas.checkin import (
 from app.services.checkin_service import (
     ActiveMembershipRequiredError,
     AlreadyCheckedInError,
-    CheckinService,
     GymClassAlreadyStartedError,
     GymClassFullError,
     GymClassNotFoundError,
@@ -60,6 +61,7 @@ def get_checkin_service(
         gym_class_repository=GymClassRepository(session),
         membership_repository=MembershipRepository(session),
         user_repository=UserRepository(session),
+        class_board_projector=get_class_board_projector(),
         activity_feed_projector=get_activity_feed_projector(),
         class_board_event_publisher=get_class_board_event_publisher(),
     )

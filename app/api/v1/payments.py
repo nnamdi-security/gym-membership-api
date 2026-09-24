@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlmodel import Session
+from app.core.activity_feed import get_activity_feed_projector
 
 from app.api.dependencies.auth import require_roles
 from app.db.session import get_session
@@ -7,7 +8,7 @@ from app.models.user import User, UserRole
 from app.repositories.membership_repository import MembershipRepository
 from app.repositories.payment_repository import PaymentRepository
 from app.repositories.plan_repository import PlanRepository
-from app.repositories.user import UserRepository
+from app.repositories.user_repository import UserRepository
 from app.schemas.payment import (
     OnlinePaymentInitializeRequest,
     OnlinePaymentInitializeResponse,
@@ -52,6 +53,7 @@ def get_payment_service(
     plan_repository = PlanRepository(session)
     user_repository = UserRepository(session)
     payment_provider = FakePaymentProvider()
+    activity_feed_projector = get_activity_feed_projector()
 
     return PaymentService(
         session=session,
@@ -60,6 +62,7 @@ def get_payment_service(
         plan_repository=plan_repository,
         user_repository=user_repository,
         payment_provider=payment_provider,
+        activity_feed_projector=activity_feed_projector
     )
 
 

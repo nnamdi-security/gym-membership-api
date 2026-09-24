@@ -34,15 +34,18 @@ class FakeMembershipRepository:
     ) -> Membership | None:
         return self.memberships.get(membership_id)
 
-    def get_for_member(
+    def get_current_for_member(
         self,
         member_id: int,
-    ) -> list[Membership]:
-        return [
-            membership
-            for membership in self.memberships.values()
-            if membership.member_id == member_id
-        ]
+    ) -> Membership | None:
+
+        for membership in self.memberships.values():
+            if membership.member_id == member_id and membership.status in (
+                MembershipStatus.ACTIVE,
+                MembershipStatus.FROZEN
+            ):
+                return membership
+        return None
 
     def get_active_for_member(
         self,
