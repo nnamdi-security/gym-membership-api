@@ -753,7 +753,115 @@ Shared:
 - Tested provider signature and duplicate behavior.
 - Discussed payment-provider retry and idempotency rules.
 
+
 ---
+
+## Day 6 — Scheduled Classes, Check-ins and Capacity Concurrency
+
+### What we did
+
+We implemented scheduled gym classes and member check-ins.
+
+Each row in `classes` represents one scheduled session rather than a recurring template.
+
+We added class management for:
+
+- listing classes;
+- viewing a class;
+- creating classes;
+- updating classes;
+- deleting classes.
+
+We added business rules so:
+
+- new classes must be scheduled in the future;
+- capacity cannot be reduced below the number of existing check-ins;
+- classes with existing check-ins cannot be deleted.
+
+We then implemented member attendance.
+
+Before a check-in is accepted, FitPro verifies:
+
+- the class exists;
+- the class has not started;
+- the target user is a MEMBER;
+- the member has an ACTIVE membership;
+- the membership dates still allow access;
+- the member has not already checked into that class;
+- the class still has capacity.
+
+We also added the class-board response containing:
+
+- capacity;
+- checked-in count;
+- remaining spaces;
+- full status.
+
+The attendance count is derived from `COUNT(checkins)` rather than a second mutable counter stored on the class row.
+
+### What broke / challenges
+
+The major challenge was class-capacity concurrency.
+
+If a class has one remaining space and two members check in at almost the same time, a normal count-then-insert implementation can allow both requests through.
+
+We solved this by locking the class row with:
+
+`SELECT ... FOR UPDATE`
+
+before checking the current attendance count and inserting the check-in.
+
+We also retained the database-level unique constraint on:
+
+`checkins(class_id, member_id)`
+
+so the same member cannot be inserted twice for one class.
+
+### What we learnt
+
+We learnt that application-level validation alone is not enough for concurrency-sensitive business rules.
+
+The database must participate in the guarantee.
+
+We also learnt that a row lock should be acquired before reading the value that controls the business decision.
+
+We verified the design with a real PostgreSQL concurrency test using:
+
+- separate database sessions;
+- two threads;
+- a synchronization barrier;
+- one final available class slot.
+
+The final result proved:
+
+- one request succeeds;
+- one request receives the full-class error;
+- attendance never exceeds capacity.
+
+### What is next
+
+Day 7 will implement:
+
+- the daily membership-maintenance job;
+- membership expiry;
+- seven-day reminders;
+- job-run idempotency;
+- secure scheduler access.
+
+### Who did what
+
+Nnamdi:
+- Implemented the core `CheckinService` flow, including ACTIVE-membership validation, duplicate protection, class-row locking, capacity enforcement, and transaction handling.
+- Implemented the class-board calculation and helped connect the class/check-in API flow to the service layer.
+
+Stephanie:
+- Implemented and tested the scheduled-class CRUD/service rules, including future-time validation, capacity-update protection, and delete protection when check-ins exist.
+- Built the PostgreSQL concurrency test for the final class slot and verified that one concurrent request succeeds while the other is rejected.
+
+Shared:
+- Reviewed the `SELECT ... FOR UPDATE` approach.
+- Tested duplicate check-ins, full classes, and member/staff access rules.
+- Reviewed why `COUNT(checkins)` remains the source of truth.
 
 
 ## Day 7 — Daily Job and Idempotency
@@ -867,4 +975,290 @@ Stephanie:
 Shared:
 - Reviewed the daily-job race condition.
 - Discussed the insert-first idempotency strategy.
-- Reviewed the transaction and rollback behavior. 
+- Reviewed the transaction and rollback behavior.
+
+---
+
+## Day 8 — Redis, Firestore and Projection Infrastructure
+
+### What we did
+
+We added the infrastructure needed for live/read projections while keeping PostgreSQL as the source of truth.
+
+Redis was added for:
+
+- connectivity checks;
+- transient event infrastructure;
+- class-board event publishing;
+- pub/sub/SSE support.
+
+Firestore support was added for:
+
+- class-board projection;
+- activity-feed projection;
+- optional read-oriented data.
+
+We also introduced no-op implementations for tests and local environments where external cloud services are not configured.
+
+The intended architecture is:
+
+```text
+PostgreSQL = authoritative business state
+Redis      = transient/live infrastructure
+Firestore  = read projection
+```
+
+Projection updates happen after the PostgreSQL business transaction succeeds.
+
+### What broke / challenges
+
+The API initially failed to start after Firestore integration because a real Firestore client was created during module import.
+
+The local Docker environment did not have Google Application Default Credentials, which caused a `DefaultCredentialsError`.
+
+We corrected the design so Firestore is optional and created through a factory.
+
+When Firestore is disabled, the application uses no-op projectors instead of failing during startup.
+
+We also corrected direct Firestore construction in payment/check-in dependency wiring.
+
+### What we learnt
+
+We learnt that optional external infrastructure should not prevent the core API from starting.
+
+We also learnt the practical difference between authoritative data and a projection.
+
+A successful PostgreSQL check-in remains valid even if Firestore or Redis is temporarily unavailable.
+
+### What is next
+
+Because the project deadline was close, we stopped expanding features and moved into stabilization, final testing, documentation, and defense preparation.
+
+### Who did what
+
+Nnamdi:
+- Implemented the Redis/class-board integration path and connected the projection/event flow to the existing check-in and payment services.
+- Diagnosed the Firestore credential/startup failure and changed the dependency wiring so local/test environments could use safe no-op projectors.
+
+Stephanie:
+- Implemented and reviewed the Firestore class-board/activity projection structure and helped verify the projection payloads and class lifecycle behavior.
+- Tested the Redis/Firestore fallback behavior and reviewed the live/read architecture against the PostgreSQL source-of-truth rule.
+
+Shared:
+- Reviewed which data belongs in PostgreSQL, Redis, and Firestore.
+- Agreed to freeze non-critical feature expansion so the team could focus on submission quality.
+
+---
+
+## Finalization — Demo Data, Test Stabilization and Postman Acceptance
+
+### What we did
+
+We created repeatable demo data and accounts for the final demonstration.
+
+The seed includes:
+
+- `admin@fitpro.demo`;
+- `frontdesk@fitpro.demo`;
+- `member@fitpro.demo`;
+- `pending@fitpro.demo`;
+- `frozen@fitpro.demo`;
+- demo plans;
+- future scheduled classes.
+
+We created and migrated the dedicated PostgreSQL test database:
+
+`fitpro_test`
+
+We then stabilized the complete test suite using:
+
+`pytest -x -vv`
+
+so we could fix one root failure at a time.
+
+During stabilization we corrected:
+
+- stale `UserRepository` imports and tests;
+- older function-style repository tests;
+- missing service dependencies introduced by projection work;
+- stale unit-test helper return values;
+- direct Firestore construction during tests;
+- missing payment activity-projection support;
+- detached ORM objects returned from closed sessions;
+- stale payment-service constructor usage;
+- incorrect dictionary keys and old test assumptions.
+
+After stabilization, the full automated suite passed:
+
+`223 passed`
+
+We also rehearsed the API through Postman because the instructor stated that the project would be tested externally.
+
+The Postman rehearsal covered most of the core flows:
+
+- login and current user;
+- invalid authentication;
+- role-based authorization;
+- plan management;
+- membership states;
+- staff payment and activation;
+- duplicate-payment rejection;
+- online-payment initialization;
+- classes;
+- check-ins;
+- full-class behavior;
+- class board;
+- daily-job execution and rerun protection.
+
+### What broke / challenges
+
+The first full test run produced many failures because the dedicated test database had not yet been created/migrated and several older tests no longer matched the current service/repository interfaces.
+
+The demo admin also initially retained an older password hash because the first seed implementation returned an existing user without resetting the configured demo password.
+
+We fixed the seeder so demo credentials are deterministic.
+
+The main testing lesson was that dozens of failing tests can be caused by only a few shared root problems.
+
+### What we learnt
+
+We learnt to separate:
+
+- development database state;
+- test database state;
+- demo seed state.
+
+We also learnt why API-level test helpers should avoid returning ORM objects after their database session closes.
+
+Using primitive values such as IDs and emails avoids `DetachedInstanceError`.
+
+We also confirmed the value of testing from two perspectives:
+
+- automated pytest regression tests;
+- Postman as an external API consumer.
+
+### What is next
+
+- complete final README and defense notes;
+- run one final Ruff check and full pytest run;
+- perform a final Postman smoke test;
+- rehearse the defense together;
+- submit the final repository.
+
+### Who did what
+
+Nnamdi:
+- Led the final code stabilization pass, created/migrated `fitpro_test`, worked through the failing tests one root cause at a time, and corrected the service/repository/test regressions until the full suite reached 223 passing tests.
+- Built and verified the repeatable demo seed, corrected the demo-password issue, and ran the main Postman acceptance flows.
+
+Stephanie:
+- Reviewed and updated stale tests and fixtures during final stabilization, especially around repository/service interface changes and expected API behavior.
+- Helped verify the final Postman scenarios, documentation accuracy, and defense-ready explanations for the major business flows.
+
+Shared:
+- Reviewed the final test results and acceptance behavior.
+- Reviewed the README/LOG content.
+- Prepared the system explanations needed for the defense.
+
+---
+
+## Final Documentation and Defense Preparation
+
+### What we did
+
+We completed the project documentation and prepared a defense guide covering:
+
+- architecture;
+- FastAPI;
+- SQLModel;
+- PostgreSQL;
+- services and repositories;
+- why classes were used and alternatives to classes;
+- dependency injection;
+- JWT authentication and RBAC;
+- membership lifecycle;
+- payment integrity;
+- webhook HMAC and idempotency;
+- class-capacity concurrency;
+- daily-job idempotency;
+- Redis and Firestore;
+- testing strategy;
+- known limitations and future improvements.
+
+The README now serves both as project documentation and as a study guide for the defense.
+
+### What broke / challenges
+
+The main challenge was explaining the implementation in a way both team members could defend confidently rather than simply memorizing code.
+
+### What we learnt
+
+A complete project defense requires understanding:
+
+- what was implemented;
+- why it was implemented that way;
+- what alternatives existed;
+- what trade-offs were accepted.
+
+### What is next
+
+- final repository cleanup;
+- final tests;
+- final Postman smoke test;
+- team defense rehearsal;
+- submission.
+
+### Who did what
+
+Nnamdi:
+- Consolidated the final architecture, business-flow, testing, concurrency, and implementation notes into the README/defense material.
+- Prepared the technical explanations for the major design decisions and likely viva questions.
+
+Stephanie:
+- Reviewed the documentation from the second team-member perspective, checking that the setup instructions, terminology, and defense explanations were understandable and consistent with the implemented API.
+- Prepared to present the complementary parts of the project during the defense, especially testing, API behavior, and business-flow verification.
+
+Shared:
+- Reviewed the final submission checklist.
+- Agreed on the presentation/defense split.
+- Rehearsed the main technical explanations together.
+
+---
+
+# Final Project Status
+
+At final stabilization:
+
+```text
+Automated tests: 223 passed
+Core API: operational
+PostgreSQL migrations: working
+Dedicated test database: working
+Demo seed: working
+Swagger/OpenAPI: available
+Postman acceptance rehearsal: completed for the main flows
+README/defense guide: completed
+```
+
+PostgreSQL remains the authoritative source of business state.
+
+Redis and Firestore remain secondary infrastructure for transient/live behavior and read projections.
+
+---
+
+# Pre-Submission Checklist
+
+- [ ] Review contribution wording once more as a team.
+- [ ] Confirm `.env` is not committed.
+- [ ] Confirm no service-account or credential JSON is committed.
+- [ ] Run `ruff format .`.
+- [ ] Run `ruff check .`.
+- [ ] Run the complete suite against `fitpro_test`.
+- [ ] Confirm all tests still pass.
+- [ ] Run `alembic upgrade head`.
+- [ ] Run the demo seed.
+- [ ] Confirm demo login works.
+- [ ] Perform a final Postman smoke test.
+- [ ] Confirm both Nnamdi and Stephanie can explain the hard problems.
+- [ ] Push the final branch and verify the remote repository.
+
