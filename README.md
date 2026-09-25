@@ -163,6 +163,13 @@ Client → Router → Service → PostgreSQL
                          └─────────────┘
 ```
 
+
+## System Architecture
+
+The following diagram illustrates the architecture of the FitPro API, including the application layers, external services, and data stores.
+
+![FitPro System Architecture](docs/images/FitPro-full-system-AD.png)
+
 ### Router layer
 
 Routers are responsible for HTTP concerns:
