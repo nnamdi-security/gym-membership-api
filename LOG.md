@@ -223,11 +223,13 @@ Day 3 will implement authentication and authorization:
 Nnamdi:
 - Bootstrapped the FastAPI project structure, `Dockerfile`, `docker-compose.yml`, and `pyproject.toml`/dependency setup.
 - Set up `alembic.ini`, `alembic/env.py`, and generated and fixed the first migration, including the enum downgrade issue.
-- Wired up GitHub Actions CI to run migrations and pytest on every push.
+- Debugged and fixed local Docker/Postgres connection issues (stale volumes, `localhost` vs container hostnames) while getting the environment running end to end.
+
 
 Stephanie:
 - Built `app/db/session.py` (the SQLAlchemy engine and session dependency) and verified the app could connect to PostgreSQL with a real `SELECT 1` check.
-- Debugged and fixed local Docker/Postgres connection issues (stale volumes, `localhost` vs container hostnames) while getting the environment running end to end.
+- Wired up GitHub Actions CI to run migrations and pytest on every push.
+
 
 Shared:
 - Reviewed Docker and database setup.

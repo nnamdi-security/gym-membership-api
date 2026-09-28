@@ -56,7 +56,7 @@ class GymClassRepository:
         return list(self.session.exec(statement).all())
 
     def count_checkins(
-        # This should be the authoritative attendance count. We do not store current_count inside classes. Why? Because a stored counter can drift out of sync. The actual truth is: how many Checkin rows exist for this class session Later Firestore can hold a denormalized live count for the wall board, but PostgreSQL remains the source of truth.
+        # This should be the authoritative attendance count. We do not store current_count inside classes because a stored counter can drift out of sync. The actual truth is: how many Checkin rows exist for this class session Later Firestore can hold a denormalized live count for the wall board, but PostgreSQL remains the source of truth.
         self,
         class_id: int,
     ) -> int:

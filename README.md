@@ -279,8 +279,6 @@ FIRESTORE_ENABLED=false
 FIRESTORE_PROJECT_ID=
 ```
 
-Do not commit the real `.env` file.
-
 ## 6.3 Start the application
 
 ```bash
@@ -339,6 +337,7 @@ Run:
 
 ```bash
 docker compose exec api python scripts/seed_demo.py
+docker compose exec api python -m scripts.seed_demo
 ```
 
 The script creates admin, front-desk, active-member, pending-payment-member, frozen-member, demo plans, and future gym classes.
