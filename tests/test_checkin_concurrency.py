@@ -144,3 +144,47 @@ def attempt_checkin(
 
         except GymClassFullError:
             return "full"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# A synchronization barrier is a testing tool that makes multiple threads wait until they have all reached the same point, then releases them together.

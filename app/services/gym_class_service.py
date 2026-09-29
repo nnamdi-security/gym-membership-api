@@ -1,5 +1,3 @@
-# This is where the repository’s database operations become real FitPro business rules.
-
 # a new class session cannot normally be created in the past;
 # a class must exist before it can be viewed/updated/deleted;
 # capacity cannot be reduced below the number of existing check-ins;
